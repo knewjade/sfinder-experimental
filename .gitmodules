@@ -1,0 +1,3 @@
+[submodule "solution-finder"]
+	path = solution-finder
+	url = https://github.com/knewjade/solution-finder.git
