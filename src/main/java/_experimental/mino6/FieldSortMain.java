@@ -75,8 +75,7 @@ public class FieldSortMain {
         PatternGenerator generator = new LoadedPatternGenerator(pattern);
         List<Pieces> pieces = generator.blocksStream().collect(Collectors.toList());
 
-        int fromDepth = generator.getDepth();
-        ConcurrentCheckerUsingHoldInvoker invoker = new ConcurrentCheckerUsingHoldInvoker(executorService, commonObj, fromDepth);
+        ConcurrentCheckerUsingHoldInvoker invoker = new ConcurrentCheckerUsingHoldInvoker(executorService, commonObj);
 
         // 探索
         AtomicInteger counter = new AtomicInteger(0);

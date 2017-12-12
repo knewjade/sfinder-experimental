@@ -63,8 +63,7 @@ public class PutterMain {
         List<Pieces> searchingPieces = blocksGenerator.blocksStream()
                 .collect(Collectors.toList());
 
-        int fromDepth = blocksGenerator.getDepth();
-        ConcurrentCheckerUsingHoldInvoker invoker = new ConcurrentCheckerUsingHoldInvoker(executorService, commonObj, fromDepth);
+        ConcurrentCheckerUsingHoldInvoker invoker = new ConcurrentCheckerUsingHoldInvoker(executorService, commonObj);
 
         HashMap<Field, Connect> map = new HashMap<>();
         Comparator<Connect> connectComparator = Comparator.<Connect>comparingDouble(o -> o.percent).reversed();

@@ -136,7 +136,7 @@ public class PutterMain2 {
         PatternGenerator verifyGenerator = new LoadedPatternGenerator("*!");
         List<Pieces> searchingBlocks = verifyGenerator.blocksStream().collect(Collectors.toList());
 
-        ConcurrentCheckerUsingHoldInvoker invoker = new ConcurrentCheckerUsingHoldInvoker(executorService, commonObj, verifyGenerator.getDepth());
+        ConcurrentCheckerUsingHoldInvoker invoker = new ConcurrentCheckerUsingHoldInvoker(executorService, commonObj);
 
         for (Pair<Field, Integer> pair : results) {
             if (pair.getValue() <= 1)
