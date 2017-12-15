@@ -1,3 +1,6 @@
+import com.amazonaws.regions.Regions
+import com.amazonaws.services.s3.AmazonS3ClientBuilder
+
 buildscript {
     ext.kotlin_version = '1.2.0'
 
@@ -7,6 +10,7 @@ buildscript {
 
     dependencies {
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+        classpath "com.amazonaws:aws-java-sdk-s3:1.11.+"
     }
 }
 
@@ -48,5 +52,43 @@ jar {
     manifest.attributes 'Main-Class': className
     from configurations.compile.collect {
         it.isDirectory() ? it : zipTree(it)
+    }
+}
+
+def jarName = String.format '%s-%s.jar', archivesBaseName, version
+def srcJarFile = file libsDir.canonicalPath + File.separator + jarName
+
+//import AmazonS3ClientBuilder
+
+task jarToS3(dependsOn: jar) {
+    group "build"
+
+    doLast {
+        def s3 = AmazonS3ClientBuilder.standard()
+                .withRegion(Regions.AP_NORTHEAST_1)
+                .build()
+
+        assert srcJarFile.exists()
+
+        // Get next build number
+        def bucketName = "sfinder"
+        def prefix = "bins/sfinder-experimental/${version}"
+        def number_key = prefix + "/_last-build-number"
+        if (!s3.doesObjectExist(bucketName, number_key))
+            s3.putObject(bucketName, number_key, "0")
+
+        def object = s3.getObject(bucketName, number_key)
+        def next_number = Integer.valueOf(object.objectContent.text) + 1
+        def next_number_format = String.format("%04d", next_number)
+        s3.putObject(bucketName, number_key, next_number_format)
+
+        assert next_number_format.equals(s3.getObject(bucketName, number_key).objectContent.text)
+
+        // Upload jar
+        def uploadKey = "${prefix}/${next_number_format}/${archivesBaseName}.jar"
+        s3.putObject(bucketName, uploadKey, srcJarFile)
+
+        println "s3 commands:"
+        println "aws s3 cp s3://${bucketName}/${uploadKey} ${archivesBaseName}.jar"
     }
 }
