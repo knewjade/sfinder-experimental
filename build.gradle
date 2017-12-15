@@ -2,7 +2,7 @@ import com.amazonaws.regions.Regions
 import com.amazonaws.services.s3.AmazonS3ClientBuilder
 
 buildscript {
-    ext.kotlin_version = '1.2.0'
+    ext.kotlin_version = '1.2.10'
 
     repositories {
         mavenCentral()
@@ -48,6 +48,7 @@ jar {
         def list = Arrays.asList str.split('\\s+')
         className = list[0]
     }
+    println className
 
     manifest.attributes 'Main-Class': className
     from configurations.compile.collect {
@@ -59,7 +60,7 @@ def jarName = String.format '%s-%s.jar', archivesBaseName, version
 def srcJarFile = file libsDir.canonicalPath + File.separator + jarName
 
 //import AmazonS3ClientBuilder
-
+// gradle jarToS3 -Pmain="MainKt"
 task jarToS3(dependsOn: jar) {
     group "build"
 

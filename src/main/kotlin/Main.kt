@@ -1,5 +1,4 @@
 fun main(args: Array<String>) {
-
     val array = listOf(1, -4, 3, 2, 1)
     val max = array.indexOf(array.maxBy { it * it })
     println(max)
