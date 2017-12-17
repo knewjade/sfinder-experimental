@@ -1,3 +1,5 @@
+package main
+
 import com.amazonaws.services.s3.AmazonS3
 import com.amazonaws.services.s3.model.S3Object
 import common.datastore.PieceCounter
@@ -37,7 +39,7 @@ fun main(args: Array<String>) {
             .build()
 
     val bucketName = "fumen-dev"
-    val bucket = S3Bucket(s3, bucketName)
+    val bucket = main.S3Bucket(s3, bucketName)
 
 //    val notNullFilePath = filePath?.let { it } ?: "default"
 //    println(notNullFilePath)

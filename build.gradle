@@ -31,6 +31,17 @@ dependencies {
     compile "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
     testCompile group: 'junit', name: 'junit', version: '4.12'
     compile "com.amazonaws:aws-java-sdk-s3:1.11.+"
+    compile "com.amazonaws:aws-java-sdk-sqs:1.11.+"
+
+    testCompile 'org.junit.jupiter:junit-jupiter-api:5.0.1'
+    testCompile 'org.junit.jupiter:junit-jupiter-engine:5.0.1'
+    testCompile 'org.junit.jupiter:junit-jupiter-params:5.0.1'
+
+    // for assertions
+    testCompile 'org.assertj:assertj-core:3.+'
+
+    // for IDE runner
+    testRuntime 'org.junit.platform:junit-platform-launcher:1.0.1'
 }
 
 compileKotlin {

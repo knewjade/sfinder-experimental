@@ -1,25 +1,17 @@
+import main.workSQS
+
 fun main(args: Array<String>) {
-    val array = listOf(1, -4, 3, 2, 1)
-    val max = array.indexOf(array.maxBy { it * it })
-    println(max)
+    val bucketName = System.getenv("BUCKET_NAME")
+    println(bucketName)
 
-    println("Hello Kotlin!!")
-    val a = 3  // final
+    val queryName = System.getenv("QUERY_NAME")
+    println(queryName)
 
-    infix fun Int.sum(other: Int): Int = this + other
-    println(3 sum 1)  // 4
+    val threshold = System.getenv("THRESHOLD")?.toDouble() ?: 0.95
+    println(threshold)
 
-    println(Char.MAX_HIGH_SURROGATE)
+    val multiThread = System.getenv("MULTI_THREAD")?.toBoolean() ?: false
+    println(multiThread)
 
-    for (ch in 'a'..'c')
-        print(ch)
-    // -> abc
-
-    k()
-    3.sum(1)
-}
-
-fun k(): Int {
-//    return 2 sum 3
-    return 3
+    workSQS(bucketName, queryName, threshold, multiThread)
 }
