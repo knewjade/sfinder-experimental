@@ -66,7 +66,7 @@ public class CheckerInvoker {
 
     public void show() {
         System.out.println(stopwatch.toMessage(MILLISECONDS, MICROSECONDS, NANOSECONDS));
-        System.out.println(String.format("Result = %s", lastResult));
+        System.out.println(String.format("Results = %s", lastResult));
     }
 
     public boolean getLastResult() {

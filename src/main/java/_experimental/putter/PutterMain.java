@@ -101,7 +101,7 @@ public class PutterMain {
                     continue;
                 }
 
-//                System.out.println(i);
+//                System.out.println(calculateCount);
 
                 List<Pair<Pieces, Boolean>> search = invoker.search(field, searchingPieces, maxClearLine, maxDepth);
                 AnalyzeTree tree = new AnalyzeTree();

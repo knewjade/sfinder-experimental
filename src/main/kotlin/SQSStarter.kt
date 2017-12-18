@@ -7,7 +7,7 @@ fun main(args: Array<String>) {
             .withRegion(Regions.AP_NORTHEAST_1)
             .build()
 
-    val queueUrl = sqs.getQueueUrl("perfect").queueUrl
+    val queueUrl = sqs.getQueueUrl("perfect-long").queueUrl
 
     for (cycle in 1..7) {
         Piece.values().forEach {

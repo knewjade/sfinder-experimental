@@ -87,7 +87,7 @@ public class CheckmateInvoker {
 
     public void show(boolean resultVisible) {
         System.out.println(stopwatch.toMessage(MILLISECONDS, MICROSECONDS, NANOSECONDS));
-        System.out.println(String.format("Result (no uniquify) = %d", lastResults.size()));
+        System.out.println(String.format("Results (no uniquify) = %d", lastResults.size()));
 
         if (resultVisible) {
             for (Result result : lastResults)
