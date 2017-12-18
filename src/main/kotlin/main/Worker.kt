@@ -145,7 +145,7 @@ private fun send(aws: AWS, input: Input, results: Results, threshold: Double) {
     val (allCount, details) = results
 
     val nextSearchCount = allCount * threshold
-    val requests = details.filter { nextSearchCount < it.success }
+    val requests = details.filter { nextSearchCount <= it.success }
     println("send ${requests.size}*7 messages")
 
     requests.forEach { detail ->

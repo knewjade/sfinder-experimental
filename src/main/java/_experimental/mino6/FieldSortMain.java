@@ -23,13 +23,13 @@ import core.field.SmallField;
 import core.mino.MinoFactory;
 import core.mino.MinoShifter;
 import core.srs.MinoRotation;
+import exceptions.FinderExecuteException;
 import helper.EasyPool;
 
 import java.io.*;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.util.List;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -99,7 +99,7 @@ public class FieldSortMain {
 
                         // 結果を返却
                         return new Pair<>(field, percent);
-                    } catch (ExecutionException | InterruptedException e) {
+                    } catch (FinderExecuteException e) {
                         e.printStackTrace();
                         return null;
                     }

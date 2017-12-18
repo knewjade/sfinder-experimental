@@ -23,6 +23,7 @@ import core.field.FieldFactory
 import core.mino.Mino
 import core.mino.MinoFactory
 import core.mino.Piece
+import exceptions.FinderExecuteCancelException
 import helper.Patterns
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
@@ -54,6 +55,9 @@ class SingleThreadMessageInvoker(val factories: Factories, minimumSuccessRate: D
 }
 
 class MultiThreadMessageInvoker(val factories: Factories, val minimumSuccessRate: Double) : MessageInvoker {
+    val executorService = createExecutorService()
+    val invoker = createInvoker(factories.minoFactory, executorService, minimumSuccessRate)
+
     private fun createExecutorService(): ExecutorService {
         val core = Runtime.getRuntime().availableProcessors()
         println("available processors: ${core}")
@@ -69,14 +73,11 @@ class MultiThreadMessageInvoker(val factories: Factories, val minimumSuccessRate
     }
 
     override fun invoke(input: Input): Results? {
-        val executorService = createExecutorService()
-        val invoker = createInvoker(factories.minoFactory, executorService, minimumSuccessRate)
-        val results = search(factories, invoker, input)
-        executorService.shutdown()
-        return results
+        return search(factories, invoker, input)
     }
 
     override fun shutdown() {
+        executorService.shutdown()
     }
 }
 
@@ -102,7 +103,11 @@ fun search(factories: Factories, invoker: ConcurrentCheckerInvoker, input: Input
 
     val details = moves.map {
         println("searching: ${it}")
-        val successCount = calculateCount(it, invoker, searchPieces)
+        val successCount = try {
+            calculateCount(it, invoker, searchPieces)
+        } catch (e: FinderExecuteCancelException) {
+            -1
+        }
 
         val data = encodeToFumen(factories, it)
 
