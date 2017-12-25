@@ -1,10 +1,9 @@
 package indexed
 
-import _experimental.EHead
+import percent.SuccessTreeHead
 import common.buildup.BuildUpStream
 import common.datastore.MinimalOperationWithKey
 import common.datastore.PieceCounter
-import common.datastore.blocks.LongPieces
 import common.parser.StringEnumTransform
 import common.pattern.LoadedPatternGenerator
 import concurrent.LockedReachableThreadLocal
@@ -13,13 +12,11 @@ import core.mino.MinoFactory
 import core.mino.Piece
 import core.srs.Rotate
 import helper.KeyParser
+import lib.Stopwatch
 import java.nio.file.Files
 import java.nio.file.Paths
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
-import java.util.function.BiConsumer
-import java.util.function.BinaryOperator
-import java.util.function.Supplier
-import java.util.stream.Collector
 import java.util.stream.Collectors.toMap
 
 fun main(args: Array<String>) {
@@ -45,11 +42,11 @@ fun main(args: Array<String>) {
 
     val counter2 = AtomicInteger()
 //    val solutions: Map<PieceCounter, List<T>> = Files.lines(Paths.get("output/indexed_solutions_10x4_SRS.csv"))
-    val solutions: Map<PieceCounter, List<T>> = Files.lines(Paths.get("output/test.csv"))
+    val solutions: Map<PieceCounter, List<Solution>> = Files.lines(Paths.get("output/test.csv"))
             .map { line ->
                 val indexes = line.split(",").map { it.toInt() }
                 val map: List<MinimalOperationWithKey> = indexes.map { index[it]!! }
-                T(map)
+                Solution(map)
             }
             .peek {
                 val v = counter2.incrementAndGet()
@@ -57,7 +54,7 @@ fun main(args: Array<String>) {
             }
             .filter { PieceCounter(it.keys.stream().map { it.piece }).equals(counter) }
             .collect(toMap(
-                    { it: T -> PieceCounter(it.keys.stream().map { it.piece }) },
+                    { it: Solution -> PieceCounter(it.keys.stream().map { it.piece }) },
                     { it -> mutableListOf(it) },
                     { t, u -> t.addAll(u); t })
             )
@@ -96,11 +93,13 @@ fun main(args: Array<String>) {
 //    mg(minoFactory, T(second))
 }
 
-private fun mg(solutions: List<T>) {
+private fun mg(solutions: List<Solution>) {
+    val stopwatch = Stopwatch.createStartedStopwatch()
+
     val height = 4
     val reachable = LockedReachableThreadLocal(height)
     val initField = SmallField()
-    val eHead = EHead()
+    val eHead = SuccessTreeHead()
 //    val a = LongPieces(listOf(Piece.S, Piece.I, Piece.O, Piece.T, Piece.I, Piece.L, Piece.J, Piece.S, Piece.Z, Piece.O))
     solutions.stream()
             .forEach {
@@ -108,14 +107,20 @@ private fun mg(solutions: List<T>) {
                         .forEach { eHead.register(it.stream().map { it.piece }) }
             }
 
+    stopwatch.stop()
+    println(stopwatch.toMessage(TimeUnit.SECONDS))
     println("ready")
     LoadedPatternGenerator("[IOS]!,*p7").blocksStream()
             .forEach {
-                if (!eHead.checksWithHold(it)) println("NG" + it.pieces)
+                if (eHead.checksWithHold(it))
+                    return@forEach
+
+                (10 downTo 0).forEach {  }
+                println("NG" + it.pieces)
             }
 }
 
-private fun mg(minoFactory: MinoFactory, first: T) {
+private fun mg(minoFactory: MinoFactory, first: Solution) {
 //    val height = 4
 //    val reachable = LockedReachable(minoFactory, MinoShifter(), MinoRotation(), height)
 
@@ -144,5 +149,5 @@ private fun mg(minoFactory: MinoFactory, first: T) {
 //    }
 }
 
-data class T(val keys: List<MinimalOperationWithKey>) {
+data class Solution(val keys: List<MinimalOperationWithKey>) {
 }
