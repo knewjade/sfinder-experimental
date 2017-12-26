@@ -1,15 +1,13 @@
 package percent
 
 import common.buildup.BuildUpStream
+import common.datastore.FullOperationWithKey
 import common.datastore.MinimalOperationWithKey
+import common.datastore.MinoOperationWithKey
 import common.datastore.PieceCounter
-import common.datastore.action.Action
 import common.datastore.blocks.LongPieces
 import common.datastore.blocks.Pieces
 import common.parser.StringEnumTransform
-import common.pattern.LoadedPatternGenerator
-import core.action.candidate.Candidate
-import core.action.candidate.LockedCandidate
 import core.action.reachable.LockedReachable
 import core.action.reachable.Reachable
 import core.field.Field
@@ -21,82 +19,91 @@ import core.mino.Piece
 import core.srs.MinoRotation
 import core.srs.Rotate
 import helper.KeyParser
-import searcher.checker.CheckerUsingHold
-import searcher.common.validator.PerfectValidator
+import helper.Patterns
 import java.nio.file.Files
+import java.nio.file.Path
 import java.nio.file.Paths
 import java.util.stream.Collectors
 
 fun main(args: Array<String>) {
     val height = 4
+
     val minoFactory = MinoFactory()
+    val usingPieces = listOf(Piece.L)
     val minoShifter = MinoShifter()
+
+    val path = Paths.get("output/index.csv")
+    val index = Index(minoFactory, minoShifter, path)
+
+    val allSolutionsPath = Paths.get("output/indexed_solutions_10x4_SRS.csv")
+    val solutionLoader = SolutionLoader(allSolutionsPath, index, setOf())
+
+    val searchingPieces = SearchingPieces(Patterns.hold(1), PieceCounter(usingPieces))
+
+    val successCalculator = Success(solutionLoader, index, searchingPieces, height)
+
+    println("ready")
+
+    val minos = listOf(
+            MinimalOperationWithKey(minoFactory.create(Piece.L, Rotate.Right), 2, 1, 0L)
+    )
+
     val minoRotation = MinoRotation()
     val reachable = LockedReachable(minoFactory, minoShifter, minoRotation, height)
+    val success = successCalculator.success(minos, reachable)
+    println(success)
+}
 
-    val index = Index(minoFactory)
-    val minos = listOf(MinimalOperationWithKey(minoFactory.create(Piece.L, Rotate.Right), 2, 1, 0L))
-    val nums = minos.map { index.get(it) }.toSet()
+class Success(private val solutionLoader: SolutionLoader, val index: Index, val searchingPieces: SearchingPieces, val height: Int) {
+    val allCount = searchingPieces.allCount
 
-    val field = FieldFactory.createField(4)
-    minos.forEach {
-        val f = FieldFactory.createField(4)
-        f.put(it.mino, it.x, it.y)
-        f.insertWhiteLineWithKey(it.needDeletedKey)
-        field.merge(f)
+    fun success(current: MinimalOperationWithKey, reachable: Reachable): Int {
+        return success(listOf(current), reachable)
     }
-    println(FieldView.toString(field))
 
-    println("# Load")
-    val loaded = Files.lines(Paths.get("output/indexed_solutions_10x4_SRS.csv"))
-            .map { line ->
-                line.split(",").map { it.toInt() }
-            }
-            .filter { it.containsAll(nums) }
-            .map {
-                val map: List<MinimalOperationWithKey> = it.filter { !nums.contains(it) }
-                        .map { index.get(it)!! }
-                Solution(map)
-            }
-            .collect(Collectors.groupingBy({ it: Solution -> PieceCounter(it.keys.stream().map { it.piece }) }))
-            .map { it.key to Solutions(it.value!!, field, reachable, height) }
-            .toMap()
+    fun success(minos: List<MinimalOperationWithKey>, reachable: Reachable): Int {
+        val field = minoToField(minos)
+        println(FieldView.toString(field))
 
-    println("# Piece")
-    val maxDepth = 10L - minos.size
-    val drawn = LoadedPatternGenerator("[^L]!,*p4").blocksStream()
-            .collect(Collectors.groupingBy({ it: Pieces -> LongPieces(it.blockStream().limit(maxDepth).map { it }) }))
-    println(drawn.size)
+        val solutionsMap = solutionLoader
+                .load(minos)
+                .map { it.key to Solutions(it.value, field, reachable, height) }
+                .toMap()
+        println("solutions: ${solutionsMap.size}")
 
-//    val usingHold = CheckerUsingHold<Action>(minoFactory, PerfectValidator())
-//    val candidate: Candidate<Action> = LockedCandidate(minoFactory, minoShifter, minoRotation, height)
+        val maxDepth = 10L - solutionLoader.requires.size - minos.size
+        val failedCount = failedCount(solutionsMap, maxDepth, searchingPieces.piecesMap)
+        val allCount = searchingPieces.allCount
 
+        return allCount - failedCount
+    }
 
-    println("# Check")
-    var counter = 0
-    val checker = Checker(loaded, maxDepth.toInt())
-    drawn.entries.forEach { entry ->
-        // [S, J, Z, T, O, I, S, I, Z, T]
-//        if (!entry.key.pieces.toString().equals("[S, J, Z, T, O, I, S, I, Z]"))
-//            return@forEach
+    private fun failedCount(solutionsMap: Map<PieceCounter, Solutions>, maxDepth: Long, searchingPieces: Map<LongPieces, List<Pieces>>): Int {
+        var counter = 0
+        val checker = Checker(solutionsMap, maxDepth.toInt())
+        searchingPieces.entries.forEach { entry ->
+            if (checker.checks1(entry.key))
+                return@forEach
 
-        if (checker.checks1(entry.key))
-            return@forEach
-
-//        println("on hold: ${entry.key}")
-        entry.value.forEach {
-            if (!checker.checks2(it)) {
-//                println("  no perfect: $it")
-//                val check = usingHold.check(field, it, candidate, height, maxDepth.toInt())
-//                if (check)
-//                    println("  wrong: $it")
-                counter += 1
+            entry.value.forEach {
+                if (!checker.checks2(it))
+                    counter += 1
             }
         }
+        return counter
     }
 
-    val size = drawn.values.sumBy { it.size }
-    println(100.0 * (size - counter) / size)
+    private fun minoToField(minos: List<MinimalOperationWithKey>): Field {
+        val field = FieldFactory.createField(height)
+        (solutionLoader.requires + minos).forEach {
+            val minoField = FieldFactory.createField(height)
+            minoField.put(it.mino, it.x, it.y)
+            minoField.insertWhiteLineWithKey(it.needDeletedKey)
+            field.merge(minoField)
+        }
+        return field
+    }
+
 }
 
 class Solutions(solutions: List<Solution>, initField: Field, reachable: Reachable, height: Int = 4) {
@@ -113,7 +120,7 @@ class Solutions(solutions: List<Solution>, initField: Field, reachable: Reachabl
 
 data class Solution(val keys: List<MinimalOperationWithKey>)
 
-class Index(minoFactory: MinoFactory) {
+class Index(val minoFactory: MinoFactory, val minoShifter: MinoShifter, val path: Path) {
     private val toKeyMap: Map<Int, MinimalOperationWithKey>
     private val toIndexMap: Map<MinimalOperationWithKey, Int>
 
@@ -122,7 +129,7 @@ class Index(minoFactory: MinoFactory) {
         val toRotate: String.() -> Rotate = { StringEnumTransform.toRotate(this) }
         val toKey: String.() -> Long = { KeyParser.parseToLong(this) }
 
-        this.toKeyMap = Files.lines(Paths.get("output/index.csv"))
+        this.toKeyMap = Files.lines(path)
                 .map { it.split(",") }
                 .collect(Collectors.toMap({ it[0].toInt() }, { it: List<String> ->
                     val mino = minoFactory.create(it[1].toPiece(), it[2].toRotate())
@@ -140,7 +147,14 @@ class Index(minoFactory: MinoFactory) {
     }
 
     fun get(key: MinimalOperationWithKey): Int? {
-        return toIndexMap[key]
+        fun whenNull(): Int? {
+            minoShifter.enumerateSameOtherActions(key.piece, key.rotate, key.x, key.y).forEach {
+                val newKey: MinoOperationWithKey = MinimalOperationWithKey(minoFactory.create(key.piece, it.rotate), it.x, it.y, key.needDeletedKey)
+                return toIndexMap[newKey] ?: return@forEach
+            }
+            throw Error("Not found: $key")
+        }
+        return toIndexMap[key] ?: whenNull()
     }
 
     fun get(index: Int): MinimalOperationWithKey? {

@@ -19,5 +19,5 @@ fun main(args: Array<String>) {
     val multiThread = System.getenv("MULTI_THREAD")?.toBoolean() ?: false
     println("Multi Thread: ${multiThread}")
 
-    workSQS(bucketName, receiverQueryName, shortSenderQueryName, longSenderQueryName, threshold, multiThread)
+    workSQS(bucketName, receiverQueryName, shortSenderQueryName, longSenderQueryName, threshold)
 }

@@ -4,16 +4,19 @@ import com.amazonaws.regions.Regions
 import com.amazonaws.services.s3.AmazonS3ClientBuilder
 import com.amazonaws.services.sqs.AmazonSQSClient
 import com.amazonaws.services.sqs.model.SendMessageBatchRequestEntry
-import common.tetfu.common.ColorConverter
-import core.mino.MinoFactory
-import core.mino.MinoShifter
 import core.mino.Piece
-import core.srs.MinoRotation
 import lib.Stopwatch
-import searcher.common.validator.PerfectValidator
+import percent.Index
+import java.nio.file.Paths
 import java.util.concurrent.TimeUnit
 
-fun workSQS(bucketName: String, receiverQueryName: String, shortSenderQueryName: String, longSenderQueryName: String, minimumSuccessRate: Double, multiThread: Boolean) {
+fun workSQS(
+        bucketName: String,
+        receiverQueryName: String,
+        shortSenderQueryName: String,
+        longSenderQueryName: String,
+        minimumSuccessRate: Double
+) {
     val s3Client = AmazonS3ClientBuilder.standard()
             .withRegion(Regions.AP_NORTHEAST_1)
             .build()
@@ -29,11 +32,13 @@ fun workSQS(bucketName: String, receiverQueryName: String, shortSenderQueryName:
     val aws = AWS(receiverSQS, shortSenderSQS, longSenderSQS, bucket)
 
     val factories = createFactories()
-    val invoker = if (multiThread) MultiThreadMessageInvoker(factories, minimumSuccessRate) else SingleThreadMessageInvoker(factories, minimumSuccessRate)
-//    val invoker = ManualInvoker(factories)
+    val path = Paths.get(ClassLoader.getSystemResource("index.csv").toURI())
+
+    val index = Index(factories.minoFactory, factories.minoShifter, path)
+    val invoker = LoadBaseMessageInvoker(factories, index, minimumSuccessRate)
 
     try {
-        run(aws, invoker, minimumSuccessRate)
+        run(aws, invoker, minimumSuccessRate, index)
     } finally {
         s3Client.shutdown()
         sqsClient.shutdown()
@@ -41,52 +46,9 @@ fun workSQS(bucketName: String, receiverQueryName: String, shortSenderQueryName:
     }
 }
 
-private fun createFactories(): Factories {
-    val minoFactory = MinoFactory()
-    val minoShifter = MinoShifter()
-    val minoRotation = MinoRotation()
-    val colorConverter = ColorConverter()
-    val perfectValidator = PerfectValidator()
-    return Factories(minoFactory, minoShifter, minoRotation, colorConverter, perfectValidator)
-}
-
-//data class TempMessage(val messageId: String, val body: String)
-//
-//class ManualInvoker(val factories: Factories) : MessageInvoker {
-//    override fun invoke(input: Input): Results? {
-//        val states = listOf(
-//                Pair(State(SmallField(30), 4), 604800),
-//                Pair(State(SmallField(120), 4), 604800),
-//                Pair(State(SmallField(480), 4), 604800),
-//                Pair(State(SmallField(1074791425), 4), 604800),
-//                Pair(State(SmallField(4299165700), 4), 598152),
-//                Pair(State(SmallField(17196662800), 4), 568428),
-//                Pair(State(SmallField(68786651200), 4), 589600),
-//                Pair(State(SmallField(275146604800), 4), 298576),
-//                Pair(State(SmallField(15), 4), 604800),
-//                Pair(State(SmallField(60), 4), 604800),
-//                Pair(State(SmallField(240), 4), 604800),
-//                Pair(State(SmallField(960), 4), 604800),
-//                Pair(State(SmallField(2149582850), 4), 298576),
-//                Pair(State(SmallField(8598331400), 4), 589600),
-//                Pair(State(SmallField(34393325600), 4), 568428),
-//                Pair(State(SmallField(137573302400), 4), 598152),
-//                Pair(State(SmallField(550293209600), 4), 604800)
-//        )
-//
-//        return Results(604800, states.map {
-//            Result(it.first, it.second, encodeToFumen(factories, it.first))
-//        })
-//    }
-//
-//    override fun shutdown() {
-//    }
-//}
-
-private fun run(aws: AWS, invoker: MessageInvoker, threshold: Double) {
+private fun run(aws: AWS, invoker: MessageInvoker, threshold: Double, index: Index) {
     while (true) {
         val message = aws.receiveMessage()
-//        val message = TempMessage("calculateCount-result", "1,vhAAgWBAUAAAA,,I,1.0")
 
         if (message == null) {
             println("[skip] no message -> sleep")
@@ -98,8 +60,8 @@ private fun run(aws: AWS, invoker: MessageInvoker, threshold: Double) {
 
         val stopwatch = Stopwatch.createStartedStopwatch()
 
-        val split = message.body.split(",")
-        val input = Input(split[0], split[1], split[2], split[3], split[4])
+        val split = message.body.trim().split(",")
+        val input = Input(index, split[0], split[1], split[2], split[3])
         println(input)
 
         search(aws, input, threshold, invoker)
@@ -134,7 +96,7 @@ private fun put(aws: AWS, input: Input, results: Results) {
     val (allCount, details) = results
 
     val output = details.joinToString(";") {
-        "${it.data},${it.success}"
+        "${it.mino},${it.success}"
     }
 
     val content = "$allCount?$output"
@@ -151,9 +113,9 @@ private fun send(aws: AWS, input: Input, results: Results, threshold: Double) {
     requests.forEach { detail ->
         val entries = Piece.values().map {
             val percent = detail.success.toDouble() / allCount
-            val replacedData = detail.data.replace('+', '_').replace('/', '-')
-            val batchId = String.format("%s-%s-%s-%s", input.cycle, replacedData, input.allPiece, it.name)
-            val body = String.format("%s,%s,%s,%s,%.3f", input.cycle, detail.data, input.allPiece, it.name, percent)
+            val numbers = (input.headPiecesInt + detail.mino).joinToString("_")
+            val batchId = String.format("%s-%s-%s", input.cycle, numbers, it.name)
+            val body = String.format("%s,%s,%s,%.5f", input.cycle, numbers, it.name, percent)
             SendMessageBatchRequestEntry(batchId, body)
         }
 
