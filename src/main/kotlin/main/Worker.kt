@@ -7,14 +7,14 @@ import com.amazonaws.services.sqs.model.SendMessageBatchRequestEntry
 import core.mino.Piece
 import lib.Stopwatch
 import percent.Index
+import java.nio.file.FileSystems
 import java.nio.file.Paths
 import java.util.concurrent.TimeUnit
 
 fun workSQS(
         bucketName: String,
         receiverQueryName: String,
-        shortSenderQueryName: String,
-        longSenderQueryName: String,
+        senderQueryName: String,
         minimumSuccessRate: Double
 ) {
     val s3Client = AmazonS3ClientBuilder.standard()
@@ -26,27 +26,23 @@ fun workSQS(
             .build()
 
     val receiverSQS = SQS(sqsClient, receiverQueryName)
-    val shortSenderSQS = SQS(sqsClient, shortSenderQueryName)
-    val longSenderSQS = SQS(sqsClient, longSenderQueryName)
+    val senderSQS = SQS(sqsClient, senderQueryName)
     val bucket = Bucket(s3Client, bucketName)
-    val aws = AWS(receiverSQS, shortSenderSQS, longSenderSQS, bucket)
+    val aws = AWS(receiverSQS, senderSQS, bucket)
 
     val factories = createFactories()
-    val path = Paths.get(ClassLoader.getSystemResource("index.csv").toURI())
 
-    val index = Index(factories.minoFactory, factories.minoShifter, path)
-    val invoker = LoadBaseMessageInvoker(factories, index, minimumSuccessRate)
+    val index = Index(factories.minoFactory, factories.minoShifter, Paths.get("input/index.csv"))
 
     try {
-        run(aws, invoker, minimumSuccessRate, index)
+        run(aws, minimumSuccessRate, factories, index)
     } finally {
         s3Client.shutdown()
         sqsClient.shutdown()
-        invoker.shutdown()
     }
 }
 
-private fun run(aws: AWS, invoker: MessageInvoker, threshold: Double, index: Index) {
+private fun run(aws: AWS, threshold: Double, factories: Factories, index: Index) {
     while (true) {
         val message = aws.receiveMessage()
 
@@ -61,10 +57,11 @@ private fun run(aws: AWS, invoker: MessageInvoker, threshold: Double, index: Ind
         val stopwatch = Stopwatch.createStartedStopwatch()
 
         val split = message.body.trim().split(",")
-        val input = Input(index, split[0], split[1], split[2], split[3])
+        println(split)
+        val input = Input(index, split[0], split[1])
         println(input)
 
-        search(aws, input, threshold, invoker)
+        search(aws, input, threshold, factories, index)
 
         stopwatch.stop()
         println(stopwatch.toMessage(TimeUnit.SECONDS))
@@ -74,25 +71,59 @@ private fun run(aws: AWS, invoker: MessageInvoker, threshold: Double, index: Ind
     }
 }
 
-private fun search(aws: AWS, input: Input, threshold: Double, invoker: MessageInvoker) {
-    if (aws.existsObject(input.prefixPath)) {
-        println("[skip] result exists already")
-        return
+private fun search(aws: AWS, input: Input, threshold: Double, factories: Factories, index: Index) {
+    fun path(cycle: Int): String {
+        return "$cycle/" + input.prefixPath
     }
 
-    if (input.prevPercentValue < threshold) {
-        println("[skip] under threshold")
-        return
+    val invoker = LoadBaseMessageInvoker(input, factories, index)
+
+    val store = mutableMapOf<Int, Results>()
+    (1..8).forEach { cycle ->
+        println("Cycle: $cycle")
+
+        val path = path(cycle)
+        if (aws.existsObject(path)) {
+            println("[skip] result exists already")
+            return@forEach
+        }
+
+        val results = invoker.invoke(cycle)
+        results?.also {
+            store[cycle] = results
+        } ?: println("[skip] no invoke")
     }
 
-    val results = invoker.invoke(input)
-    results?.also {
-        put(aws, input, it)
-        send(aws, input, it, threshold)
-    } ?: println("[skip] no invoke")
+    store.values.flatMap { value ->
+        val (allCount, details) = value
+        val nextSearchCount = allCount * threshold
+        details.filter { nextSearchCount <= it.success }
+    }.toSet().forEach {
+        send(input, it, aws)
+    }
+
+    store.entries.forEach { entry ->
+        val cycle = entry.key
+        val results = entry.value
+
+        val path = path(cycle)
+        put(aws, results, path)
+    }
 }
 
-private fun put(aws: AWS, input: Input, results: Results) {
+private fun send(input: Input, detail: Result, aws: AWS) {
+    val entries = Piece.values().map {
+        val numbers = (input.headPiecesInt + detail.mino).sorted().joinToString("_")
+        val batchId = String.format("%s-%s", numbers, it.name)
+        val body = String.format("%s,%s", numbers, it.name)
+        SendMessageBatchRequestEntry(batchId, body)
+    }
+
+    println(entries)
+    aws.sendShortMessages(entries)
+}
+
+private fun put(aws: AWS, results: Results, path: String) {
     val (allCount, details) = results
 
     val output = details.joinToString(";") {
@@ -100,30 +131,5 @@ private fun put(aws: AWS, input: Input, results: Results) {
     }
 
     val content = "$allCount?$output"
-    aws.putObject(input.prefixPath, content)
-}
-
-private fun send(aws: AWS, input: Input, results: Results, threshold: Double) {
-    val (allCount, details) = results
-
-    val nextSearchCount = allCount * threshold
-    val requests = details.filter { nextSearchCount <= it.success }
-    println("send ${requests.size}*7 messages")
-
-    requests.forEach { detail ->
-        val entries = Piece.values().map {
-            val percent = detail.success.toDouble() / allCount
-            val numbers = (input.headPiecesInt + detail.mino).joinToString("_")
-            val batchId = String.format("%s-%s-%s", input.cycle, numbers, it.name)
-            val body = String.format("%s,%s,%s,%.5f", input.cycle, numbers, it.name, percent)
-            SendMessageBatchRequestEntry(batchId, body)
-        }
-
-        println(entries)
-
-        if (input.allPiece.length <= 1)
-            aws.sendLongMessages(entries)
-        else
-            aws.sendShortMessages(entries)
-    }
+    aws.putObject(path, content)
 }

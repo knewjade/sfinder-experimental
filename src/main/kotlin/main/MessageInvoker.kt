@@ -11,10 +11,11 @@ import percent.Index
 import percent.SearchingPieces
 import percent.SolutionLoader
 import percent.Success
+import java.nio.file.FileSystems
 import java.nio.file.Paths
 
 interface MessageInvoker {
-    fun invoke(input: Input): Results?
+    fun invoke(cycle: Int): Results?
 
     fun shutdown()
 }
@@ -65,10 +66,15 @@ interface MessageInvoker {
 //    }
 //}
 
-class LoadBaseMessageInvoker(val factories: Factories, val index: Index, minimumSuccessRate: Double) : MessageInvoker {
-    override fun invoke(input: Input): Results? {
+class LoadBaseMessageInvoker(val input: Input, val factories: Factories, val index: Index) : MessageInvoker {
+    val solutionLoader: SolutionLoader
+
+    init {
+        solutionLoader = SolutionLoader(Paths.get("input/indexed_solutions_10x4_SRS.csv"), index, input.headPiecesInt)
+    }
+
+    override fun invoke(cycle: Int): Results? {
         val height = 4
-        val cycle = input.cycleNumber
         val next = input.nextPiece
 
         val usingPieces = input.headPiecesMinos.map { it.piece } + input.nextPiece
@@ -82,9 +88,6 @@ class LoadBaseMessageInvoker(val factories: Factories, val index: Index, minimum
             return null
 
         val initState = parseToField(input.headPiecesMinos, height)
-
-        val allSolutionsPath = Paths.get(ClassLoader.getSystemResource("indexed_solutions_10x4_SRS.csv").toURI())
-        val solutionLoader = SolutionLoader(allSolutionsPath, index, input.headPiecesInt)
 
         val successCalculator = Success(solutionLoader, index, searchingPieces, height)
 

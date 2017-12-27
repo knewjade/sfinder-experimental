@@ -70,7 +70,6 @@ jar {
 def jarName = String.format '%s-%s.jar', archivesBaseName, version
 def srcJarFile = file libsDir.canonicalPath + File.separator + jarName
 
-//import AmazonS3ClientBuilder
 // gradle jarToS3 -Pmain="MainKt"
 task jarToS3(dependsOn: jar) {
     group "build"

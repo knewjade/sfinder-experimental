@@ -37,18 +37,13 @@ data class State(val field: Field, val maxClearLine: Int) {
 }
 
 data class Input(val index: Index,
-                 val cycle: String,
                  val headPiecesData: String,
-                 val next: String,
-                 val prevPercent: String) {
-    val cycleNumber = cycle.toInt()
+                 val next: String) {
     val headPiecesInt = if (headPiecesData.isBlank()) setOf() else headPiecesData.split(";").map { it.toInt() }.toSet()
     val headPiecesMinos = headPiecesInt.map { index.get(it)!! }
     val headPieces = headPiecesMinos.map { it.piece.name }.joinToString("")
     val nextPiece = StringEnumTransform.toPiece(next)
-    val prevPercentValue = prevPercent.toDouble()
-    val prefixPath = "${cycle}/${headPieces}${next}/${headPiecesData}"
-    val allPiece = headPieces + next
+    val prefixPath = "${headPieces}${next}/${headPiecesData}"
 }
 
 data class Result(val mino: Int, val success: Int)

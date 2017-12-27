@@ -1,11 +1,16 @@
 import main.workSQS
 
-// 1,,T,1.0
-// 1,254;90,J,1.0
+
+// export BUCKET_NAME=fumen-dev
+// export RECEIVER_QUERY_NAME=dev-test
+// export SENDER_QUERY_NAME=dev-test
+
+
+// ,I
+// 254;90,J
 fun main(args: Array<String>) {
     workSQS(
             "fumen-dev",
-            "dev-test",
             "dev-test",
             "dev-test",
             1.0

@@ -63,7 +63,7 @@ class Success(private val solutionLoader: SolutionLoader, val index: Index, val 
 
     fun success(minos: List<MinimalOperationWithKey>, reachable: Reachable): Int {
         val field = minoToField(minos)
-        println(FieldView.toString(field))
+//        println(FieldView.toString(field))
 
         val solutionsMap = solutionLoader
                 .load(minos)

@@ -54,17 +54,13 @@ class Bucket(val client: AmazonS3, val bucketName: String) {
     }
 }
 
-class AWS(val receiver: SQS, val shortSender: SQS, val longSender: SQS, val s3: Bucket) {
+class AWS(val receiver: SQS, val sender: SQS, val s3: Bucket) {
     fun receiveMessage(): Message? {
         return receiver.receiveMessage()
     }
 
     fun sendShortMessages(entries: List<SendMessageBatchRequestEntry>) {
-        return shortSender.sendMessages(entries)
-    }
-
-    fun sendLongMessages(entries: List<SendMessageBatchRequestEntry>) {
-        return longSender.sendMessages(entries)
+        return sender.sendMessages(entries)
     }
 
     fun deleteMessage(message: Message) {
