@@ -52,7 +52,7 @@ class SQS(private val client: AmazonSQS, queryName: String) {
         if (messages.size != 1)
             return null
 
-        val timeout = TimeUnit.SECONDS.convert(6L, TimeUnit.SECONDS).toInt()
+        val timeout = TimeUnit.SECONDS.convert(12L, TimeUnit.HOURS).toInt() - 1
         return SQSMessage(this, messages[0], timeout)
     }
 
