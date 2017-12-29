@@ -6,8 +6,8 @@ import main.workSQS
 // export SENDER_QUERY_NAME=dev-test
 
 
-// ,I
-// 254;90,J
+// vhAAgWBAUAAAA,,I
+// ???,254;90,J
 fun main(args: Array<String>) {
     workSQS(
             "fumen-dev",

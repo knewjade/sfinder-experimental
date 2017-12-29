@@ -58,7 +58,7 @@ private fun run(aws: AWS, threshold: Double, factories: Factories, index: Index)
 
         val split = message.body.trim().split(",")
         println(split)
-        val input = Input(index, split[0], split[1])
+        val input = Input(index, split[0], split[1], split[2])
         println(input)
 
         search(aws, input, threshold, factories, index)
@@ -114,8 +114,8 @@ private fun search(aws: AWS, input: Input, threshold: Double, factories: Factori
 private fun send(input: Input, detail: Result, aws: AWS) {
     val entries = Piece.values().map {
         val numbers = (input.headPiecesInt + detail.mino).sorted().joinToString("_")
-        val batchId = String.format("%s-%s", numbers, it.name)
-        val body = String.format("%s,%s", numbers, it.name)
+        val batchId = String.format("%s-%s-%s", detail.fieldData, numbers, it.name)
+        val body = String.format("%s,%s,%s", detail.fieldData, numbers, it.name)
         SendMessageBatchRequestEntry(batchId, body)
     }
 

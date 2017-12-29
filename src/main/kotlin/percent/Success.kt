@@ -103,7 +103,6 @@ class Success(private val solutionLoader: SolutionLoader, val index: Index, val 
         }
         return field
     }
-
 }
 
 class Solutions(solutions: List<Solution>, initField: Field, reachable: Reachable, height: Int = 4) {

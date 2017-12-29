@@ -27,7 +27,7 @@ class SolutionLoader(val path: Path, val index: Index, requires: Set<Int>) {
 
     fun load(fixMinos: List<MinimalOperationWithKey>): Map<PieceCounter, List<Solution>> {
         val numbers = fixMinos.map { index.get(it) }.toSet()
-        println("next numbers: ${numbers}")
+//        println("next numbers: ${numbers}")
 
         val stream = preSolutions?.stream() ?: Files.lines(path).map { line ->
             line.split(",").map { it.toInt() }.toSet()

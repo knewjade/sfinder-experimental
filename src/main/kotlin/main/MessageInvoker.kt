@@ -3,15 +3,20 @@ package main
 import common.datastore.MinimalOperationWithKey
 import common.datastore.MinoOperationWithKey
 import common.datastore.PieceCounter
+import common.tetfu.Tetfu
+import common.tetfu.TetfuElement
+import common.tetfu.common.ColorType
+import common.tetfu.field.ArrayColoredField
+import common.tetfu.field.ColoredField
 import core.action.candidate.LockedCandidate
 import core.action.reachable.LockedReachable
+import core.field.Field
 import core.field.FieldFactory
 import helper.Patterns
 import percent.Index
 import percent.SearchingPieces
 import percent.SolutionLoader
 import percent.Success
-import java.nio.file.FileSystems
 import java.nio.file.Paths
 
 interface MessageInvoker {
@@ -105,10 +110,12 @@ class LoadBaseMessageInvoker(val input: Input, val factories: Factories, val ind
             val mino = MinimalOperationWithKey(minoFactory.create(next, it.rotate), it.x, it.y, 0L)
 
             val success = successCalculator.success(mino, reachable)
+            val state = minoToField(mino, height)
+            val fieldData = encodeToFumen(factories, state)
 
-            val result = Result(index.get(mino)!!, success)
+            val result = Result(index.get(mino)!!, success, fieldData)
 
-            println("  -> ${result.success}")
+            println("  -> ${result}")
 
             result
         }
@@ -116,9 +123,41 @@ class LoadBaseMessageInvoker(val input: Input, val factories: Factories, val ind
         return Results(allCount, details)
     }
 
+    private fun minoToField(mino: MinimalOperationWithKey, height: Int): State {
+        return parseToField(solutionLoader.requires + mino, height)
+    }
+
+    private fun parseToField(minos: List<MinoOperationWithKey>, height: Int): State {
+        val field = FieldFactory.createField(height)
+        minos.forEach {
+            val minoField = FieldFactory.createField(height)
+            minoField.put(it.mino, it.x, it.y)
+            minoField.insertWhiteLineWithKey(it.needDeletedKey)
+            field.merge(minoField)
+        }
+        val deleteKey = field.clearLineReturnKey()
+
+        return State(field, height - java.lang.Long.bitCount(deleteKey))
+    }
+
+    private fun encodeToFumen(factories: Factories, state: State): String {
+        fun parseGrayField(field: Field): ColoredField {
+            val coloredField = ArrayColoredField(24)
+            for (y in 0 until field.maxFieldHeight)
+                for (x in 0 until 10)
+                    if (!field.isEmpty(x, y))
+                        coloredField.setColorType(ColorType.Gray, x, y)
+            return coloredField
+        }
+
+        val tetfu = Tetfu(factories.minoFactory, factories.colorConverter)
+        return tetfu.encode(listOf(TetfuElement(parseGrayField(state.field), state.maxClearLine.toString())))
+    }
+
     override fun shutdown() {
     }
 }
+
 
 //
 //fun search(factories: Factories, invoker: ConcurrentCheckerInvoker, input: Input): Results? {
@@ -160,10 +199,7 @@ class LoadBaseMessageInvoker(val input: Input, val factories: Factories, val ind
 //    return Results(allCount, details)
 //}
 //
-//internal fun encodeToFumen(factories: Factories, state: State): String {
-//    val tetfu = Tetfu(factories.minoFactory, factories.colorConverter)
-//    return tetfu.encode(listOf(TetfuElement(parseColoredField(state.field), state.maxClearLine.toString())))
-//}
+
 //
 //private fun calculateCount(state: State, invoker: ConcurrentCheckerInvoker, searchPieces: List<Pieces>): Int {
 //    val maxDepth = (state.maxClearLine * 10 - state.field.numOfAllBlocks) / 4
@@ -171,16 +207,7 @@ class LoadBaseMessageInvoker(val input: Input, val factories: Factories, val ind
 //    return results.count { it.value!! }
 //}
 //
-private fun parseToField(minos: List<MinoOperationWithKey>, height: Int): State {
-    val field = FieldFactory.createField(height)
-    minos.forEach {
-        val minoField = FieldFactory.createField(height)
-        minoField.put(it.mino, it.x, it.y)
-        minoField.insertWhiteLineWithKey(it.needDeletedKey)
-        field.merge(minoField)
-    }
-    return State(field, height)
-}
+
 
 //private fun move(init: State, next: Piece, factories: Factories): List<State> {
 //    val maxClearLine = init.maxClearLine
@@ -224,11 +251,3 @@ private fun parseToField(minos: List<MinoOperationWithKey>, height: Int): State 
 //            .collect(Collectors.toSet())
 //}
 //
-//private fun parseColoredField(field: Field): ColoredField {
-//    val coloredField = ArrayColoredField(24)
-//    for (y in 0 until field.maxFieldHeight)
-//        for (x in 0 until 10)
-//            if (!field.isEmpty(x, y))
-//                coloredField.setColorType(ColorType.Gray, x, y)
-//    return coloredField
-//}

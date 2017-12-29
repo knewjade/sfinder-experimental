@@ -10,7 +10,7 @@ fun main(args: Array<String>) {
     val queueUrl = sqs.getQueueUrl("perfect").queueUrl
 
     Piece.values().forEach {
-        val body = String.format(",%s", it.name)
+        val body = String.format("vhAAgWBAUAAAA,,%s", it.name)
         println(body)
         sqs.sendMessage(queueUrl, body)
     }
