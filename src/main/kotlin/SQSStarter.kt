@@ -8,6 +8,7 @@ fun main(args: Array<String>) {
             .build()
 
     val queueUrl = sqs.getQueueUrl("perfect").queueUrl
+//    val queueUrl = sqs.getQueueUrl("dev-test").queueUrl
 
     Piece.values().forEach {
         val body = String.format("vhAAgWBAUAAAA,,%s", it.name)

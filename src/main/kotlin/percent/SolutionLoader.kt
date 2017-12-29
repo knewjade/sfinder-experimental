@@ -8,7 +8,7 @@ import java.util.stream.Collectors
 
 class SolutionLoader(val path: Path, val index: Index, requires: Set<Int>) {
     val requires = requires.map { index.get(it)!! }
-    val preSolutions = filterSolutions(requires)
+    private val preSolutions = filterSolutions(requires)
 
     private fun filterSolutions(requires: Set<Int>): List<Set<Int>>? {
         if (requires.isEmpty())

@@ -1,4 +1,4 @@
-import main.workSQS
+import main.Worker
 
 fun main(args: Array<String>) {
     val bucketName = System.getenv("BUCKET_NAME")
@@ -13,5 +13,5 @@ fun main(args: Array<String>) {
     val threshold = System.getenv("THRESHOLD")?.toDouble() ?: 0.95
     println("Threshold: ${threshold}")
 
-    workSQS(bucketName, receiverQueryName, senderQueryName, threshold)
+    Worker(bucketName, receiverQueryName, senderQueryName, threshold).work()
 }
