@@ -10,5 +10,6 @@ fun main(args: Array<String>) {
     Worker("fumen-dev",
             "dev-test",
             "dev-test",
-            1.0).work()
+            1.0,
+            1L).work()
 }

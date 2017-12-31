@@ -2,6 +2,8 @@ package main
 
 import com.amazonaws.regions.Regions
 import com.amazonaws.services.s3.AmazonS3
+import com.amazonaws.services.s3.model.AmazonS3Exception
+import com.amazonaws.services.s3.model.ListObjectsRequest
 import com.amazonaws.services.sqs.AmazonSQS
 import com.amazonaws.services.sqs.AmazonSQSClient
 import com.amazonaws.services.sqs.model.Message
@@ -40,7 +42,7 @@ class SQSMessage(private val sqs: SQS, message: Message, val timeoutInSec: Int) 
     }
 }
 
-class SQS(private val client: AmazonSQS, queryName: String) {
+class SQS(private val client: AmazonSQS, queryName: String, val timeoutInHour: Long = 12L) {
     private val queueUrl = client.getQueueUrl(queryName).queueUrl
 
     fun receiveMessage(): SQSMessage? {
@@ -52,7 +54,7 @@ class SQS(private val client: AmazonSQS, queryName: String) {
         if (messages.size != 1)
             return null
 
-        val timeout = TimeUnit.SECONDS.convert(12L, TimeUnit.HOURS).toInt() - 1
+        val timeout = TimeUnit.SECONDS.convert(timeoutInHour, TimeUnit.HOURS).toInt() - 1
         return SQSMessage(this, messages[0], timeout)
     }
 
@@ -95,7 +97,26 @@ class Bucket(private val client: AmazonS3, private val bucketName: String) {
     }
 
     fun getObject(path: String): String? {
-        return client.getObject(bucketName, path)?.objectContent?.let { convert(it) }
+        return try {
+            client.getObject(bucketName, path)
+        } catch (e: AmazonS3Exception) {
+            null
+        }?.objectContent?.let { convert(it) }
+    }
+
+    fun listAllKeys(): List<String> {
+        val request = ListObjectsRequest().also {
+            it.bucketName = bucketName
+        }
+
+        val keys = mutableListOf<String>()
+        do {
+            val objects = client.listObjects(request)
+            keys.addAll(objects.objectSummaries.map { it.key!! })
+            request.marker = objects.nextMarker
+        } while (objects.isTruncated)
+
+        return keys.toList()
     }
 
     @Throws(IOException::class)

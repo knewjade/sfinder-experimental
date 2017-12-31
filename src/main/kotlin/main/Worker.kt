@@ -16,7 +16,8 @@ class Worker(
         val bucketName: String,
         val receiverQueryName: String,
         val senderQueryName: String,
-        val minimumSuccessRate: Double
+        val minimumSuccessRate: Double,
+        val timeoutHour: Long
 ) {
     fun work() {
         val s3Client = AmazonS3ClientBuilder.standard()
@@ -27,7 +28,7 @@ class Worker(
                 .withRegion(Regions.AP_NORTHEAST_1)
                 .build()
 
-        val receiverSQS = SQS(sqsClient, receiverQueryName)
+        val receiverSQS = SQS(sqsClient, receiverQueryName, timeoutHour)
         val senderSQS = SQS(sqsClient, senderQueryName)
         val bucket = Bucket(s3Client, bucketName)
         val aws = AWS(receiverSQS, senderSQS, bucket)
@@ -50,7 +51,7 @@ class Worker(
 
             if (message == null) {
                 println("[skip] no message -> sleep")
-                Thread.sleep(TimeUnit.SECONDS.toMillis(10L))
+                Thread.sleep(TimeUnit.SECONDS.toMillis(20L))
                 continue
             }
 
@@ -115,7 +116,8 @@ class Worker(
     private fun send(input: Input, detail: Result, aws: AWS) {
         val entries = Piece.values().map {
             val numbers = (input.headPiecesInt + detail.mino).sorted().joinToString("_")
-            val batchId = String.format("%s-%s-%s", detail.fieldData, numbers, it.name)
+            val fieldForId = detail.fieldData.replace("+", "_").replace("/", "-")
+            val batchId = String.format("%s-%s-%s", fieldForId, numbers, it.name)
             val body = String.format("%s,%s,%s", detail.fieldData, numbers, it.name)
             SendMessageBatchRequestEntry(batchId, body)
         }

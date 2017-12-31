@@ -13,5 +13,8 @@ fun main(args: Array<String>) {
     val threshold = System.getenv("THRESHOLD")?.toDouble() ?: 0.95
     println("Threshold: ${threshold}")
 
-    Worker(bucketName, receiverQueryName, senderQueryName, threshold).work()
+    val timeoutHour = System.getenv("TIMEOUT")?.toLong() ?: 12L
+    println("Timeout/Hour: ${timeoutHour}")
+
+    Worker(bucketName, receiverQueryName, senderQueryName, threshold, timeoutHour).work()
 }

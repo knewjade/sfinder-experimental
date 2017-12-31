@@ -40,11 +40,11 @@ data class Input(val index: Index,
                  val headFieldData: String,
                  val headPiecesData: String,
                  val next: String) {
-    val headPiecesInt = if (headPiecesData.isBlank()) setOf() else headPiecesData.split(";").map { it.toInt() }.toSet()
+    val headPiecesInt = if (headPiecesData.isBlank()) setOf() else headPiecesData.split("_").map { it.toInt() }.toSet()
     val headPiecesMinos = headPiecesInt.map { index.get(it)!! }
-    val headPieces = headPiecesMinos.map { it.piece.name }.joinToString("")
-    val nextPiece = StringEnumTransform.toPiece(next)
-    val prefixPath = "${headPieces}${next}/${headFieldData}"
+    val nextPiece = StringEnumTransform.toPiece(next)!!
+    private val headPieceString = (headPiecesMinos.map { it.piece } + nextPiece).sorted().joinToString("")
+    val prefixPath = "$headPieceString/$headFieldData"
 }
 
 data class Result(val mino: Int, val success: Int, val fieldData: String) {
