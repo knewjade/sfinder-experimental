@@ -116,7 +116,10 @@ class Worker(
     private fun send(input: Input, detail: Result, aws: AWS) {
         val entries = Piece.values().map {
             val numbers = (input.headPiecesInt + detail.mino).sorted().joinToString("_")
-            val fieldForId = detail.fieldData.replace("+", "_").replace("/", "-")
+            val fieldForId = detail.fieldData
+                    .replace("+", "_")
+                    .replace("/", "-")
+                    .replace("?", "")
             val batchId = String.format("%s-%s-%s", fieldForId, numbers, it.name)
             val body = String.format("%s,%s,%s", detail.fieldData, numbers, it.name)
             SendMessageBatchRequestEntry(batchId, body)
