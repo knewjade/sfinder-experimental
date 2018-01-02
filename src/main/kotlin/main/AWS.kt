@@ -104,15 +104,19 @@ class Bucket(private val client: AmazonS3, private val bucketName: String) {
         }?.objectContent?.let { convert(it) }
     }
 
-    fun listAllKeys(): List<String> {
+    fun listAllKeys(maxKeys: Int = Int.MAX_VALUE): List<String> {
         val request = ListObjectsRequest().also {
             it.bucketName = bucketName
+            it.maxKeys = maxKeys
         }
 
         val keys = mutableListOf<String>()
         do {
             val objects = client.listObjects(request)
             keys.addAll(objects.objectSummaries.map { it.key!! })
+
+            if (maxKeys <= keys.size) break
+
             request.marker = objects.nextMarker
         } while (objects.isTruncated)
 

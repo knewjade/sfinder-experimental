@@ -10,10 +10,12 @@ fun main(args: Array<String>) {
     val queueUrl = sqs.getQueueUrl("perfect").queueUrl
 //    val queueUrl = sqs.getQueueUrl("dev-test").queueUrl
 
-    Piece.values().forEach {
-        val body = String.format("vhAAgWBAUAAAA,,%s", it.name)
-        println(body)
-        sqs.sendMessage(queueUrl, body)
+    (1..8).forEach { cycle ->
+        Piece.values().forEach {
+            val body = String.format("%d,vhAAgWBAUAAAA,,%s", cycle, it.name)
+            println(body)
+            sqs.sendMessage(queueUrl, body)
+        }
     }
 
     sqs.shutdown()

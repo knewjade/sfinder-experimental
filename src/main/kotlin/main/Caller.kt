@@ -5,7 +5,7 @@ class Caller(
         private val input: Input,
         private val invoker: MessageInvoker
 ) {
-    fun search(cycle: Int): Results? {
+    fun search(cycle: Int): Results {
         val path = path(cycle)
         return if (aws.existsObject(path)) {
             println("result exists already: Loading from $path")
@@ -20,12 +20,10 @@ class Caller(
                             Result(mino.toInt(), success.toInt(), fieldData)
                         }
                 Results(allCount, details)
-            }
+            } ?: Results(0, emptyList())
         } else {
             val results = invoker.invoke(cycle)
-            results?.also {
-                put(aws, it, path)
-            } ?: println("[skip] no invoke")
+            put(aws, results, path)
             results
         }
     }
@@ -37,11 +35,14 @@ class Caller(
     private fun put(aws: AWS, results: Results, path: String) {
         val (allCount, details) = results
 
-        val output = details.joinToString(";") {
-            "${it.mino},${it.success},${it.fieldData}"
+        if (0 < allCount) {
+            val output = details.joinToString(";") {
+                "${it.mino},${it.success},${it.fieldData}"
+            }
+            val content = "$allCount?$output"
+            aws.putObject(path, content)
+        } else {
+            aws.putObject(path, "0")
         }
-
-        val content = "$allCount?$output"
-        aws.putObject(path, content)
     }
 }

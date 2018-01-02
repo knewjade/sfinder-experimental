@@ -17,7 +17,8 @@ class Worker(
         val receiverQueryName: String,
         val senderQueryName: String,
         val minimumSuccessRate: Double,
-        val timeoutHour: Long
+        val timeoutHour: Long,
+        val isService: Boolean
 ) {
     fun work() {
         val s3Client = AmazonS3ClientBuilder.standard()
@@ -38,24 +39,27 @@ class Worker(
         val index = Index(factories.minoFactory, factories.minoShifter, Paths.get("input/index.csv"))
 
         try {
-            run(aws, minimumSuccessRate, factories, index)
+            run(aws, minimumSuccessRate, isService, factories, index)
         } finally {
             s3Client.shutdown()
             sqsClient.shutdown()
         }
     }
 
-    private fun run(aws: AWS, threshold: Double, factories: Factories, index: Index) {
+    private fun run(aws: AWS, threshold: Double, isService: Boolean, factories: Factories, index: Index) {
         while (true) {
             val message = aws.receiveMessage()
 
             if (message == null) {
                 println("[skip] no message -> sleep")
+                if (!isService)
+                    return
                 Thread.sleep(TimeUnit.SECONDS.toMillis(20L))
                 continue
             }
 
             println("message-id: ${message.messageId}")
+            println("Memory: ${getMemoryInfo()}")
 
             val stopwatch = Stopwatch.createStartedStopwatch()
 
@@ -78,38 +82,25 @@ class Worker(
     private fun search(aws: AWS, message: SQSMessage, threshold: Double, factories: Factories, index: Index) {
         val split = message.body.trim().split(",")
         println(split)
-        val input = Input(index, split[0], split[1], split[2])
+        val input = Input(index, split[0].toInt(), split[1], split[2], split[3])
         println(input)
 
         val invoker = LoadBaseMessageInvoker(input, factories, index)
 //        val invoker = DummyInvoker(input, factories, index)
         val caller = Caller(aws, input, invoker)
 
-        val store = mutableMapOf<Int, Results>()
-        (1..8).forEach { cycle ->
-            val progressTimer = message.progressTimer()
-            println("Progress Time: ${progressTimer * 100} %")
-            if (0.8 < progressTimer) {
-                throw FinderExecuteCancelException("message timeout")
-            }
-
-            println("Memory: ${getMemoryInfo()}")
-
-            println("Cycle: $cycle")
-
-            val results = caller.search(cycle)
-
-            results?.also {
-                store[cycle] = it
-            } ?: println("[skip] no invoke")
+        val progressTimer = message.progressTimer()
+        println("Progress Time: ${progressTimer * 100} %")
+        if (0.8 < progressTimer) {
+            throw FinderExecuteCancelException("message timeout")
         }
 
-        store.values.flatMap { value ->
+        val results = caller.search(input.cycle)
+        println(results)
+        results.takeIf { 0 < it.allCount }?.let { value ->
             val (allCount, details) = value
             val nextSearchCount = allCount * threshold
-            details.filter { nextSearchCount <= it.success }
-        }.toSet().forEach {
-            send(input, it, aws)
+            details.filter { nextSearchCount <= it.success }.forEach { send(input, it, aws) }
         }
     }
 
@@ -117,11 +108,11 @@ class Worker(
         val entries = Piece.values().map {
             val numbers = (input.headPiecesInt + detail.mino).sorted().joinToString("_")
             val fieldForId = detail.fieldData
-                    .replace("+", "_")
-                    .replace("/", "-")
+                    .replace("+", "-")
+                    .replace("/", "_")
                     .replace("?", "")
-            val batchId = String.format("%s-%s-%s", fieldForId, numbers, it.name)
-            val body = String.format("%s,%s,%s", detail.fieldData, numbers, it.name)
+            val batchId = String.format("%d-%s-%s-%s", input.cycle, fieldForId, numbers, it.name)
+            val body = String.format("%d,%s,%s,%s", input.cycle, detail.fieldData, numbers, it.name)
             SendMessageBatchRequestEntry(batchId, body)
         }
 

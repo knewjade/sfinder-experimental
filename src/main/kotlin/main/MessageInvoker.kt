@@ -20,7 +20,7 @@ import percent.Success
 import java.nio.file.Paths
 
 interface MessageInvoker {
-    fun invoke(cycle: Int): Results?
+    fun invoke(cycle: Int): Results
 
     fun shutdown()
 }
@@ -28,7 +28,7 @@ interface MessageInvoker {
 class LoadBaseMessageInvoker(val input: Input, private val factories: Factories, val index: Index) : MessageInvoker {
     private val solutionLoader: SolutionLoader = SolutionLoader(Paths.get("input/indexed_solutions_10x4_SRS.csv"), index, input.headPiecesInt)
 
-    override fun invoke(cycle: Int): Results? {
+    override fun invoke(cycle: Int): Results {
         val height = 4
         val next = input.nextPiece
 
@@ -40,7 +40,7 @@ class LoadBaseMessageInvoker(val input: Input, private val factories: Factories,
         println("pieces: ${allCount}")
 
         if (allCount == 0)
-            return null
+            return Results(0, emptyList())
 
         val initState = parseToField(input.headPiecesMinos, height)
 
@@ -111,7 +111,7 @@ class LoadBaseMessageInvoker(val input: Input, private val factories: Factories,
 class DummyInvoker(val input: Input, private val factories: Factories, val index: Index) : MessageInvoker {
     private val solutionLoader: SolutionLoader = SolutionLoader(Paths.get("input/indexed_solutions_10x4_SRS.csv"), index, input.headPiecesInt)
 
-    override fun invoke(cycle: Int): Results? {
+    override fun invoke(cycle: Int): Results {
         val height = 4
         val next = input.nextPiece
 
@@ -123,7 +123,7 @@ class DummyInvoker(val input: Input, private val factories: Factories, val index
         println("pieces: ${allCount}")
 
         if (allCount == 0)
-            return null
+            return Results(0, emptyList())
 
         val initState = parseToField(input.headPiecesMinos, height)
 

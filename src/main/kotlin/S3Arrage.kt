@@ -6,7 +6,31 @@ import main.Bucket
 
 fun main(args: Array<String>) {
 //    to()
-    revert()
+//    revert()
+    renameField()
+}
+
+private fun renameField() {
+    val s3Client = AmazonS3ClientBuilder.standard()
+            .withRegion(Regions.AP_NORTHEAST_1)
+            .build()
+    val from = Bucket(s3Client, "fumen")
+    val to = Bucket(s3Client, "fumens")
+    val keys = from.listAllKeys()
+    println(keys.size)
+    for (key in keys) {
+        val regex = Regex("([0-8])/([TIOLJSZ]+)/([a-zA-Z0-9+/?]+)")
+        assert(regex.matches(key), { key })
+        regex.find(key)!!.groupValues.let {
+            val obj = from.getObject(key)!!
+            val (cycle, minos, field) = Triple(it[1], it[2], it[3])
+            val newField = field.replace("/", "_")
+            if (field != newField) println("rename: $key")
+            val newKey = "$cycle/$minos/$newField"
+            to.putObject(newKey, obj)
+        }
+        Thread.sleep(10L)
+    }
 }
 
 private fun to() {

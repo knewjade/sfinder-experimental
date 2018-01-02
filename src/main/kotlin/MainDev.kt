@@ -7,9 +7,10 @@ import main.Worker
 // vhAAgWBAUAAAA,,I
 // ???,254;90,J
 fun main(args: Array<String>) {
-    Worker("fumen-dev",
+    Worker("fumen",
             "dev-test",
-            "dev-test",
+            "perfect",
             1.0,
-            1L).work()
+            1L,
+            false).work()
 }

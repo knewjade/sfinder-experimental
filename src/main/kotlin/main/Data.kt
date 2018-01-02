@@ -37,6 +37,7 @@ data class State(val field: Field, val maxClearLine: Int) {
 }
 
 data class Input(val index: Index,
+                 val cycle: Int,
                  val headFieldData: String,
                  val headPiecesData: String,
                  val next: String) {
