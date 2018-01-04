@@ -3,15 +3,24 @@ package main
 import common.datastore.MinimalOperationWithKey
 import common.datastore.MinoOperationWithKey
 import common.datastore.PieceCounter
+import common.datastore.action.Action
 import common.tetfu.Tetfu
 import common.tetfu.TetfuElement
 import common.tetfu.common.ColorType
 import common.tetfu.field.ArrayColoredField
 import common.tetfu.field.ColoredField
+import concurrent.LockedCandidateThreadLocal
+import concurrent.LockedReachableThreadLocal
+import concurrent.checker.CheckerUsingHoldThreadLocal
+import concurrent.checker.invoker.CheckerCommonObj
+import concurrent.checker.invoker.ConcurrentCheckerInvoker
+import concurrent.checker.invoker.using_hold.SingleCheckerUsingHoldInvoker
 import core.action.candidate.LockedCandidate
 import core.action.reachable.LockedReachable
 import core.field.Field
 import core.field.FieldFactory
+import core.mino.MinoFactory
+import exceptions.FinderExecuteCancelException
 import helper.Patterns
 import percent.Index
 import percent.SearchingPieces
@@ -77,31 +86,81 @@ class LoadBaseMessageInvoker(val input: Input, private val factories: Factories,
         return parseToField(solutionLoader.requires + mino, height)
     }
 
-    private fun parseToField(minos: List<MinoOperationWithKey>, height: Int): State {
-        val field = FieldFactory.createField(height)
-        minos.forEach {
-            val minoField = FieldFactory.createField(height)
-            minoField.put(it.mino, it.x, it.y)
-            minoField.insertWhiteLineWithKey(it.needDeletedKey)
-            field.merge(minoField)
-        }
-        val deleteKey = field.clearLineReturnKey()
+    override fun shutdown() {
+    }
+}
 
-        return State(field, height - java.lang.Long.bitCount(deleteKey))
+class SingleThreadMessageInvoker(val input: Input, private val factories: Factories, val index: Index) : MessageInvoker {
+
+    val invoker: ConcurrentCheckerInvoker = createInvoker(factories.minoFactory)
+
+    private fun createInvoker(minoFactory: MinoFactory, maxY: Int = 4): ConcurrentCheckerInvoker {
+        val candidateThreadLocal = LockedCandidateThreadLocal(maxY)
+        val checkerThreadLocal = CheckerUsingHoldThreadLocal<Action>()
+        val reachableThreadLocal = LockedReachableThreadLocal(maxY)
+        val commonObj = CheckerCommonObj(minoFactory, candidateThreadLocal, checkerThreadLocal, reachableThreadLocal)
+        return SingleCheckerUsingHoldInvoker(commonObj)
     }
 
-    private fun encodeToFumen(factories: Factories, state: State): String {
-        fun parseGrayField(field: Field): ColoredField {
-            val coloredField = ArrayColoredField(24)
-            for (y in 0 until field.maxFieldHeight)
-                for (x in 0 until 10)
-                    if (!field.isEmpty(x, y))
-                        coloredField.setColorType(ColorType.Gray, x, y)
-            return coloredField
+    override fun invoke(cycle: Int): Results {
+        val height = 4
+        val next = input.nextPiece
+
+        val usingPieces = input.headPiecesMinos.map { it.piece } + input.nextPiece
+
+        val searchingPieces = SearchingPieces(Patterns.hold(cycle), PieceCounter(usingPieces))
+
+        val allPieces = searchingPieces.piecesMap.values.flatMap { it }
+
+        val allCount = searchingPieces.allCount
+        println("pieces: ${allCount}")
+
+        if (allCount == 0)
+            return Results(0, emptyList())
+
+        val initState = parseToField(input.headPiecesMinos, height)
+
+        val minoFactory = factories.minoFactory
+        val minoShifter = factories.minoShifter
+        val minoRotation = factories.minoRotation
+
+        val candidate = LockedCandidate(minoFactory, minoShifter, minoRotation, initState.maxClearLine)
+        val actions = candidate.search(initState.field, next, initState.maxClearLine)
+        println("moves: ${actions.size}")
+
+        val maxDepth = 10 - input.headPiecesMinos.size - 1
+        println("Max depth: $maxDepth")
+
+        val details = actions.map {
+            println("searching: ${it}")
+            val mino = MinimalOperationWithKey(minoFactory.create(next, it.rotate), it.x, it.y, 0L)
+
+            val state = minoToField(mino, height)
+            val success = if (0 < maxDepth) {
+                try {
+                    val list = invoker.search(state.field, allPieces, state.maxClearLine, maxDepth)
+                    list.count { it.value }
+                } catch (e: FinderExecuteCancelException) {
+                    -1
+                }
+            } else {
+                allPieces.size
+            }
+
+            val fieldData = encodeToFumen(factories, state)
+
+            val result = Result(index.get(mino)!!, success, fieldData)
+
+            println("  -> $result")
+
+            result
         }
 
-        val tetfu = Tetfu(factories.minoFactory, factories.colorConverter)
-        return tetfu.encode(listOf(TetfuElement(parseGrayField(state.field), state.maxClearLine.toString())))
+        return Results(allCount, details)
+    }
+
+    private fun minoToField(mino: MinimalOperationWithKey, height: Int): State {
+        return parseToField(input.headPiecesMinos + mino, height)
     }
 
     override fun shutdown() {
@@ -157,33 +216,33 @@ class DummyInvoker(val input: Input, private val factories: Factories, val index
         return parseToField(solutionLoader.requires + mino, height)
     }
 
-    private fun parseToField(minos: List<MinoOperationWithKey>, height: Int): State {
-        val field = FieldFactory.createField(height)
-        minos.forEach {
-            val minoField = FieldFactory.createField(height)
-            minoField.put(it.mino, it.x, it.y)
-            minoField.insertWhiteLineWithKey(it.needDeletedKey)
-            field.merge(minoField)
-        }
-        val deleteKey = field.clearLineReturnKey()
-
-        return State(field, height - java.lang.Long.bitCount(deleteKey))
-    }
-
-    private fun encodeToFumen(factories: Factories, state: State): String {
-        fun parseGrayField(field: Field): ColoredField {
-            val coloredField = ArrayColoredField(24)
-            for (y in 0 until field.maxFieldHeight)
-                for (x in 0 until 10)
-                    if (!field.isEmpty(x, y))
-                        coloredField.setColorType(ColorType.Gray, x, y)
-            return coloredField
-        }
-
-        val tetfu = Tetfu(factories.minoFactory, factories.colorConverter)
-        return tetfu.encode(listOf(TetfuElement(parseGrayField(state.field), state.maxClearLine.toString())))
-    }
-
     override fun shutdown() {
     }
+}
+
+private fun parseToField(minos: List<MinoOperationWithKey>, height: Int): State {
+    val field = FieldFactory.createField(height)
+    minos.forEach {
+        val minoField = FieldFactory.createField(height)
+        minoField.put(it.mino, it.x, it.y)
+        minoField.insertWhiteLineWithKey(it.needDeletedKey)
+        field.merge(minoField)
+    }
+    val deleteKey = field.clearLineReturnKey()
+
+    return State(field, height - java.lang.Long.bitCount(deleteKey))
+}
+
+private fun encodeToFumen(factories: Factories, state: State): String {
+    fun parseGrayField(field: Field): ColoredField {
+        val coloredField = ArrayColoredField(24)
+        for (y in 0 until field.maxFieldHeight)
+            for (x in 0 until 10)
+                if (!field.isEmpty(x, y))
+                    coloredField.setColorType(ColorType.Gray, x, y)
+        return coloredField
+    }
+
+    val tetfu = Tetfu(factories.minoFactory, factories.colorConverter)
+    return tetfu.encode(listOf(TetfuElement(parseGrayField(state.field), state.maxClearLine.toString())))
 }

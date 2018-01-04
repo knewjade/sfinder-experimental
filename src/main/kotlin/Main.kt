@@ -19,5 +19,8 @@ fun main(args: Array<String>) {
     val service = System.getenv("SERVICE")?.toBoolean() ?: false
     println("Service: $service")
 
-    Worker(bucketName, receiverQueryName, senderQueryName, threshold, timeoutHour, service).work()
+    val calculate = System.getenv("CALCULATE")?.toBoolean() ?: true
+    println("Calculate: $calculate")
+
+    Worker(bucketName, receiverQueryName, senderQueryName, threshold, timeoutHour, service, calculate).work()
 }

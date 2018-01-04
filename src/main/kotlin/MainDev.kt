@@ -8,9 +8,10 @@ import main.Worker
 // ???,254;90,J
 fun main(args: Array<String>) {
     Worker("fumen",
-            "dev-test",
             "perfect",
-            1.0,
+            "perfect",
+            0.95,
             1L,
-            false).work()
+            false,
+            true).work()
 }

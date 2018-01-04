@@ -18,7 +18,8 @@ class Worker(
         val senderQueryName: String,
         val minimumSuccessRate: Double,
         val timeoutHour: Long,
-        val isService: Boolean
+        val isService: Boolean,
+        val calculate: Boolean
 ) {
     fun work() {
         val s3Client = AmazonS3ClientBuilder.standard()
@@ -39,14 +40,14 @@ class Worker(
         val index = Index(factories.minoFactory, factories.minoShifter, Paths.get("input/index.csv"))
 
         try {
-            run(aws, minimumSuccessRate, isService, factories, index)
+            run(aws, minimumSuccessRate, isService, factories, index, calculate)
         } finally {
             s3Client.shutdown()
             sqsClient.shutdown()
         }
     }
 
-    private fun run(aws: AWS, threshold: Double, isService: Boolean, factories: Factories, index: Index) {
+    private fun run(aws: AWS, threshold: Double, isService: Boolean, factories: Factories, index: Index, calculate: Boolean) {
         while (true) {
             val message = aws.receiveMessage()
 
@@ -64,7 +65,7 @@ class Worker(
             val stopwatch = Stopwatch.createStartedStopwatch()
 
             try {
-                search(aws, message, threshold, factories, index)
+                search(aws, message, threshold, factories, index, calculate)
             } catch (e: FinderExecuteCancelException) {
                 println("[info] ${e.message} -> duplicate")
                 message.duplicate()
@@ -79,13 +80,22 @@ class Worker(
     }
 
     @Throws(FinderExecuteCancelException::class)
-    private fun search(aws: AWS, message: SQSMessage, threshold: Double, factories: Factories, index: Index) {
+    private fun search(aws: AWS, message: SQSMessage, threshold: Double, factories: Factories, index: Index, calculate: Boolean) {
         val split = message.body.trim().split(",")
         println(split)
         val input = Input(index, split[0].toInt(), split[1], split[2], split[3])
         println(input)
 
-        val invoker = LoadBaseMessageInvoker(input, factories, index)
+        if (10 <= input.headPiecesMinos.size) {
+            println("[skip] over piece")
+            return
+        }
+
+        val invoker = if (calculate) {
+            SingleThreadMessageInvoker(input, factories, index)
+        } else {
+            LoadBaseMessageInvoker(input, factories, index)
+        }
 //        val invoker = DummyInvoker(input, factories, index)
         val caller = Caller(aws, input, invoker)
 
@@ -97,16 +107,19 @@ class Worker(
 
         val results = caller.search(input.cycle)
         println(results)
-        results.takeIf { 0 < it.allCount }?.let { value ->
-            val (allCount, details) = value
-            val nextSearchCount = allCount * threshold
-            details.filter { nextSearchCount <= it.success }.forEach { send(input, it, aws) }
+        if (input.headPiecesInt.size <= 9) {
+            results.takeIf { 0 < it.allCount }?.let { value ->
+                val (allCount, details) = value
+                val nextSearchCount = allCount * threshold
+                details.filter { nextSearchCount <= it.success }.forEach { send(input, it, aws) }
+            }
         }
     }
 
     private fun send(input: Input, detail: Result, aws: AWS) {
         val entries = Piece.values().map {
-            val numbers = (input.headPiecesInt + detail.mino).sorted().joinToString("_")
+            val minos = input.headPiecesInt + detail.mino
+            val numbers = minos.sorted().joinToString("_")
             val fieldForId = detail.fieldData
                     .replace("+", "-")
                     .replace("/", "_")

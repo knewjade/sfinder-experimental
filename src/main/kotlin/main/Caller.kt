@@ -12,15 +12,17 @@ class Caller(
             val content = aws.getObject(path)!!
             content.indexOf("?").takeIf { 0 <= it }?.let {
                 val allCount = content.substring(0, it).toInt()
-                val details = content.substring(it + 1).split(";")
-                        .map {
-                            val split = it.split(",")
-                            assert(split.size == 2)
-                            val (mino, success, fieldData) = split
-                            Result(mino.toInt(), success.toInt(), fieldData)
-                        }
+                val substring = content.substring(it + 1)
+                val details = substring.takeUnless { it.isEmpty() }?.let {
+                    it.split(";").map {
+                        val split = it.split(",")
+                        assert(split.size == 2)
+                        val (mino, success, fieldData) = split
+                        Result(mino.toInt(), success.toInt(), fieldData)
+                    }
+                } ?: emptyList()
                 Results(allCount, details)
-            } ?: Results(0, emptyList())
+            } ?: Results(content.toInt(), emptyList())
         } else {
             val results = invoker.invoke(cycle)
             put(aws, results, path)
