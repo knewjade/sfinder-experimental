@@ -7,11 +7,11 @@ import main.Worker
 // vhAAgWBAUAAAA,,I
 // ???,254;90,J
 fun main(args: Array<String>) {
-    Worker("fumen",
-            "perfect",
+    Worker("fumens",
+            "perfect-3",
             "perfect",
             0.95,
             1L,
             false,
-            true).work()
+            false).work()
 }

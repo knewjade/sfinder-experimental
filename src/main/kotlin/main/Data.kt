@@ -45,7 +45,7 @@ data class Input(val index: Index,
     val headPiecesMinos = headPiecesInt.map { index.get(it)!! }
     val nextPiece = StringEnumTransform.toPiece(next)!!
     private val headPieceString = (headPiecesMinos.map { it.piece } + nextPiece).sorted().joinToString("")
-    val prefixPath = "$headPieceString/$headFieldData"
+    val prefixPath = "$headPieceString/${headFieldData.replace("/", "_")}"
 }
 
 data class Result(val mino: Int, val success: Int, val fieldData: String) {

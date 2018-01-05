@@ -104,6 +104,10 @@ class Bucket(private val client: AmazonS3, private val bucketName: String) {
         }?.objectContent?.let { convert(it) }
     }
 
+    fun deleteObject(path: String) {
+        client.deleteObject(bucketName, path)
+    }
+
     fun listAllKeys(maxKeys: Int = Int.MAX_VALUE): List<String> {
         val request = ListObjectsRequest().also {
             it.bucketName = bucketName
