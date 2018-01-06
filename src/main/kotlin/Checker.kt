@@ -1,7 +1,7 @@
 import com.amazonaws.regions.Regions
 import com.amazonaws.services.s3.AmazonS3ClientBuilder
 import core.mino.Piece
-import main.Bucket
+import main.aws.Bucket
 
 fun main(args: Array<String>) {
     val s3Client = AmazonS3ClientBuilder.standard()
