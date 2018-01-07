@@ -1,4 +1,4 @@
-package percent;
+package main.percent;
 
 import core.mino.Piece;
 import org.jetbrains.annotations.NotNull;

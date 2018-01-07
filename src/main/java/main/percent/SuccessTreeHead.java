@@ -1,4 +1,4 @@
-package percent;
+package main.percent;
 
 import common.datastore.blocks.Pieces;
 import core.mino.Piece;

@@ -8,16 +8,20 @@ import main.domain.createFactories
 import main.domain.*
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
-import percent.Index
+import main.percent.Index
 import java.nio.file.Paths
 
 
 class CalculatorMessageInvokerTest {
+    companion object {
+        val factories = createFactories()
+        val index by lazy {
+            Index(factories.minoFactory, factories.minoShifter, Paths.get("input/index.csv"))
+        }
+    }
+
     @Test
     fun test1() {
-        val factories = createFactories()
-        val index = Index(factories.minoFactory, factories.minoShifter, Paths.get("input/index.csv"))
-
         val headMinos = listOf(
                 MinimalOperationWithKey(Mino(Piece.I, Rotate.Left), 0, 1, 0L),
                 MinimalOperationWithKey(Mino(Piece.L, Rotate.Right), 1, 1, 0L),
@@ -36,9 +40,6 @@ class CalculatorMessageInvokerTest {
 
     @Test
     fun fill() {
-        val factories = createFactories()
-        val index = Index(factories.minoFactory, factories.minoShifter, Paths.get("input/index.csv"))
-
         val headMinos = listOf(
                 MinimalOperationWithKey(Mino(Piece.Z, Rotate.Spawn), 1, 2, 0L),
                 MinimalOperationWithKey(Mino(Piece.T, Rotate.Right), 0, 1, 0L),
@@ -56,14 +57,11 @@ class CalculatorMessageInvokerTest {
 
         assertThat(results.allCount).isEqualTo(Counter(4))
         assertThat(results.details).hasSize(1)
-                .contains(Result(MinoIndex(178), Counter(4), FieldData("vhAAgWBAQAAAA")))
+                .contains(Result(MinoIndex(176), Counter(4), FieldData("vhAAgWBAQAAAA")))
     }
 
     @Test
     fun empty() {
-        val factories = createFactories()
-        val index = Index(factories.minoFactory, factories.minoShifter, Paths.get("input/index.csv"))
-
         val headMinos = listOf(
                 MinimalOperationWithKey(Mino(Piece.I, Rotate.Left), 0, 1, 0L),
                 MinimalOperationWithKey(Mino(Piece.L, Rotate.Right), 1, 1, 0L),

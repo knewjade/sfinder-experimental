@@ -6,15 +6,16 @@ import core.action.candidate.LockedCandidate
 import core.action.reachable.LockedReachable
 import core.mino.Piece
 import main.domain.*
-import percent.Index
-import percent.SolutionLoader
-import percent.Success
-import java.nio.file.Paths
+import main.percent.Index
+import main.percent.SolutionLoader
+import main.percent.Success
 
-class FileBaseMessageInvoker(private val headPieces: HeadPieces, private val factories: Factories, val index: Index) : MessageInvoker {
-    private val headIndexes = headPieces.headMinos.map { index.get(it)!! }.toSet()
-    private val solutionLoader: SolutionLoader = SolutionLoader(Paths.get("input/indexed_solutions_10x4_SRS.csv"), index, headIndexes)
-
+class FileBaseMessageInvoker(
+        private val headPieces: HeadPieces,
+        private val factories: Factories,
+        val index: Index,
+        private val solutionLoader: SolutionLoader
+) : MessageInvoker {
     override fun invoke(cycle: Cycle): Results {
         val searchingPieces = toSearchingPieces(cycle, headPieces)
         val allCount = searchingPieces.allCount
@@ -31,7 +32,6 @@ class FileBaseMessageInvoker(private val headPieces: HeadPieces, private val fac
 
         println("moves: ${actions.size}")
 
-        println("loading solution ...")
         val successCalculator = Success(solutionLoader, index, searchingPieces, fieldHeight)
         val reachable = LockedReachable(factories.minoFactory, factories.minoShifter, factories.minoRotation, fieldHeight)
 

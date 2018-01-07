@@ -6,8 +6,9 @@ import com.amazonaws.services.sqs.AmazonSQSClient
 import main.aws.AWS
 import main.aws.Bucket
 import main.aws.SQS
+import main.domain.AllMinoIndexes
 import main.domain.createFactories
-import percent.Index
+import main.percent.Index
 import java.nio.file.Paths
 
 fun main(args: Array<String>) {
@@ -49,8 +50,11 @@ fun main(args: Array<String>) {
 
     val index = Index(factories.minoFactory, factories.minoShifter, Paths.get("input/index.csv"))
 
+    val allSolutionsPath = Paths.get("input/indexed_solutions_10x4_SRS.csv")
+    val allMinoIndexes = AllMinoIndexes(allSolutionsPath)
+
     try {
-        Worker(aws, threshold, service, factories, index, calculate).invoke()
+        Worker(aws, threshold, service, factories, index, allMinoIndexes, calculate).invoke()
     } finally {
         s3Client.shutdown()
         sqsClient.shutdown()

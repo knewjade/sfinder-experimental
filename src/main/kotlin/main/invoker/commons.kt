@@ -10,8 +10,7 @@ import core.field.Field
 import core.field.FieldFactory
 import helper.Patterns
 import main.domain.*
-import percent.SearchingPieces
-import java.lang.Long
+import main.percent.SearchingPieces
 
 fun toSearchingPieces(cycle: Cycle, headPieces: HeadPieces): SearchingPieces {
     return SearchingPieces(Patterns.hold(cycle.number), headPieces.allPieceCounter)
@@ -27,7 +26,7 @@ fun parseToField(minos: List<MinoOperationWithKey>, fieldHeight: Int): State {
     }
     val deleteKey = field.clearLineReturnKey()
 
-    return State(field, fieldHeight - Long.bitCount(deleteKey))
+    return State(field, fieldHeight - java.lang.Long.bitCount(deleteKey))
 }
 
 fun encodeToFumen(factories: Factories, state: State): FieldData {

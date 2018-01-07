@@ -12,7 +12,10 @@ import main.caller.InvokerCaller
 import main.domain.*
 import main.invoker.CalculatorMessageInvoker
 import main.invoker.FileBaseMessageInvoker
-import percent.Index
+import main.percent.CachedSolutionLoader
+import main.percent.Index
+import main.percent.ResultsSerializer
+import main.percent.SolutionLoader
 import java.util.concurrent.TimeUnit
 
 class Worker(
@@ -21,6 +24,7 @@ class Worker(
         private val isService: Boolean,
         private val factories: Factories,
         private val index: Index,
+        private val allMinoIndexes: AllMinoIndexes,
         private val calculate: Boolean
 ) {
     fun invoke() {
@@ -68,15 +72,19 @@ class Worker(
 
         val resultPath = ResultPath(cycle, headPieces, fieldData)
         val caller = if (aws.existsObject(resultPath.path)) {
+            println("already exists: ${resultPath.path}")
             val content = aws.getObject(resultPath.path)!!
             ContentCaller(content)
         } else {
             val invoker = if (calculate) {
                 CalculatorMessageInvoker(headPieces, factories, index)
             } else {
-                FileBaseMessageInvoker(headPieces, factories, index)
+                val headIndexes = headPieces.headMinos.map { index.get(it)!! }.toSet()
+                val solutionLoader: SolutionLoader = CachedSolutionLoader(allMinoIndexes, index, headIndexes)
+                FileBaseMessageInvoker(headPieces, factories, index, solutionLoader)
             }
-            InvokerCaller(aws, invoker, resultPath, cycle)
+            val serializer = ResultsSerializer()
+            InvokerCaller(aws, invoker, resultPath, cycle, serializer)
         }
 
         val results = caller.call()

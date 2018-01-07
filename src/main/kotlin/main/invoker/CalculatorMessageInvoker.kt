@@ -13,7 +13,7 @@ import core.mino.MinoFactory
 import core.mino.Piece
 import exceptions.FinderExecuteCancelException
 import main.domain.*
-import percent.Index
+import main.percent.Index
 
 class CalculatorMessageInvoker(private val headPieces: HeadPieces, private val factories: Factories, val index: Index) : MessageInvoker {
     val invoker: ConcurrentCheckerInvoker = createInvoker(factories.minoFactory)

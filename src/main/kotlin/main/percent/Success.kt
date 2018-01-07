@@ -1,7 +1,6 @@
-package percent
+package main.percent
 
 import common.buildup.BuildUpStream
-import common.datastore.FullOperationWithKey
 import common.datastore.MinimalOperationWithKey
 import common.datastore.MinoOperationWithKey
 import common.datastore.PieceCounter
@@ -12,7 +11,6 @@ import core.action.reachable.LockedReachable
 import core.action.reachable.Reachable
 import core.field.Field
 import core.field.FieldFactory
-import core.field.FieldView
 import core.mino.MinoFactory
 import core.mino.MinoShifter
 import core.mino.Piece
@@ -36,7 +34,7 @@ fun main(args: Array<String>) {
     val index = Index(minoFactory, minoShifter, path)
 
     val allSolutionsPath = Paths.get("output/indexed_solutions_10x4_SRS.csv")
-    val solutionLoader = SolutionLoader(allSolutionsPath, index, setOf())
+    val solutionLoader = DirectSolutionLoader(allSolutionsPath, index, setOf())
 
     val searchingPieces = SearchingPieces(Patterns.hold(1), PieceCounter(usingPieces))
 

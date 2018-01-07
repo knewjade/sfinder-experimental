@@ -9,7 +9,7 @@ import common.tetfu.field.ColoredField
 import core.mino.MinoFactory
 import core.mino.MinoShifter
 import core.mino.Piece
-import percent.Index
+import main.percent.Index
 import util.fig.FigSetting
 import util.fig.FrameType
 import util.fig.generator.FieldOnlyFigGenerator

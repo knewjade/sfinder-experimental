@@ -1,4 +1,4 @@
-package percent
+package main.percent
 
 import common.datastore.PieceCounter
 import core.mino.Piece

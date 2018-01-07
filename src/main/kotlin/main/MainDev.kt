@@ -6,8 +6,9 @@ import com.amazonaws.services.sqs.AmazonSQSClient
 import main.aws.AWS
 import main.aws.Bucket
 import main.aws.SQS
+import main.domain.AllMinoIndexes
 import main.domain.createFactories
-import percent.Index
+import main.percent.Index
 import java.nio.file.Paths
 
 // export BUCKET_NAME=fumen-dev
@@ -17,11 +18,15 @@ import java.nio.file.Paths
 // vhAAgWBAUAAAA,,I
 // ???,254;90,J
 fun main(args: Array<String>) {
-    val receiverQueryName = "perfect-1"
-    val senderQueryName = "perfect-1"
+    val receiverQueryName = "perfect-2"
+    val senderQueryName = "perfect-3"
     val timeoutHour = null
 
-    val bucketName = "fumen"
+    val bucketName = "fumens"
+
+    val minimumSuccessRate = 0.95
+    val service = false
+    val calculate = false
 
     val s3Client = AmazonS3ClientBuilder.standard()
             .withRegion(Regions.AP_NORTHEAST_1)
@@ -40,11 +45,11 @@ fun main(args: Array<String>) {
 
     val index = Index(factories.minoFactory, factories.minoShifter, Paths.get("input/index.csv"))
 
-    val minimumSuccessRate = 0.95
-    val service = false
-    val calculate = false
+    val allSolutionsPath = Paths.get("input/indexed_solutions_10x4_SRS.csv")
+    val allMinoIndexes = AllMinoIndexes(allSolutionsPath)
+
     try {
-        Worker(aws, minimumSuccessRate, service, factories, index, calculate).invoke()
+        Worker(aws, minimumSuccessRate, service, factories, index, allMinoIndexes, calculate).invoke()
     } finally {
         s3Client.shutdown()
         sqsClient.shutdown()

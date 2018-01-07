@@ -5,27 +5,39 @@ import common.datastore.MinimalOperationWithKey
 import core.mino.Mino
 import core.mino.Piece
 import core.srs.Rotate
-import main.domain.createFactories
 import main.domain.*
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
-import percent.Index
+import main.percent.CachedSolutionLoader
+import main.percent.Index
 import java.nio.file.Paths
 
 
 class FileBaseMessageInvokerTest {
+    companion object {
+        val factories = createFactories()
+        val index by lazy {
+            Index(factories.minoFactory, factories.minoShifter, Paths.get("input/index.csv"))
+        }
+
+        val allMinoIndexes by lazy {
+            val allSolutionsPath = Paths.get("input/indexed_solutions_10x4_SRS.csv")
+            AllMinoIndexes(allSolutionsPath)
+        }
+    }
+
     @Test
     fun test1() {
-        val factories = createFactories()
-        val index = Index(factories.minoFactory, factories.minoShifter, Paths.get("input/index.csv"))
-
         val headMinos = listOf(
                 MinimalOperationWithKey(Mino(Piece.I, Rotate.Left), 0, 1, 0L),
                 MinimalOperationWithKey(Mino(Piece.L, Rotate.Right), 1, 1, 0L),
                 MinimalOperationWithKey(Mino(Piece.Z, Rotate.Spawn), 3, 0, 0L)
         )
         val headPieces = HeadPieces(headMinos, Piece.S)
-        val invoker = FileBaseMessageInvoker(headPieces, factories, index)
+        val headIndexes = headPieces.headMinos.map { index.get(it)!! }.toSet()
+
+        val solutionsLoader = CachedSolutionLoader(allMinoIndexes, index, headIndexes)
+        val invoker = FileBaseMessageInvoker(headPieces, factories, index, solutionsLoader)
         val results = invoker.invoke(Cycle(1))
 
         assertThat(results.allCount).isEqualTo(Counter(5040))
@@ -37,9 +49,6 @@ class FileBaseMessageInvokerTest {
 
     @Test
     fun empty() {
-        val factories = createFactories()
-        val index = Index(factories.minoFactory, factories.minoShifter, Paths.get("input/index.csv"))
-
         val headMinos = listOf(
                 MinimalOperationWithKey(Mino(Piece.I, Rotate.Left), 0, 1, 0L),
                 MinimalOperationWithKey(Mino(Piece.L, Rotate.Right), 1, 1, 0L),
@@ -47,10 +56,30 @@ class FileBaseMessageInvokerTest {
                 MinimalOperationWithKey(Mino(Piece.T, Rotate.Left), 5, 1, 0L)
         )
         val headPieces = HeadPieces(headMinos, Piece.T)
-        val invoker = FileBaseMessageInvoker(headPieces, factories, index)
+        val headIndexes = headPieces.headMinos.map { index.get(it)!! }.toSet()
+
+        val solutionsLoader = CachedSolutionLoader(allMinoIndexes, index, headIndexes)
+        val invoker = FileBaseMessageInvoker(headPieces, factories, index, solutionsLoader)
         val results = invoker.invoke(Cycle(1))
 
         assertThat(results.allCount).isEqualTo(Counter(0))
+        assertThat(results.details).isEmpty()
+    }
+
+
+    @Test
+    fun test2() {
+        val headMinos = listOf(
+                MinimalOperationWithKey(Mino(Piece.L, Rotate.Spawn), 2, 0, 0L)
+        )
+        val headPieces = HeadPieces(headMinos, Piece.T)
+        val headIndexes = headPieces.headMinos.map { index.get(it)!! }.toSet()
+
+        val solutionsLoader = CachedSolutionLoader(allMinoIndexes, index, headIndexes)
+        val invoker = FileBaseMessageInvoker(headPieces, factories, index, solutionsLoader)
+        val results = invoker.invoke(Cycle(2))
+
+        assertThat(results.allCount).isEqualTo(Counter(226800))
         assertThat(results.details).isEmpty()
     }
 }
