@@ -17,4 +17,8 @@ class FieldData(data: String) {
     override fun hashCode(): Int {
         return raw.hashCode()
     }
+
+    override fun toString(): String {
+        return "FieldData(raw='$raw')"
+    }
 }

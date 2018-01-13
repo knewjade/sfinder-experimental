@@ -18,6 +18,7 @@ import core.srs.MinoRotation
 import core.srs.Rotate
 import helper.KeyParser
 import helper.Patterns
+import main.domain.MinoIndex
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
@@ -156,6 +157,10 @@ class Index(val minoFactory: MinoFactory, val minoShifter: MinoShifter, val path
 
     fun get(index: Int): MinimalOperationWithKey? {
         return toKeyMap[index]
+    }
+
+    fun get(index: MinoIndex): MinimalOperationWithKey? {
+        return toKeyMap[index.index]
     }
 }
 

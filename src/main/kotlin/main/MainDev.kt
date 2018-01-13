@@ -18,15 +18,15 @@ import java.nio.file.Paths
 // vhAAgWBAUAAAA,,I
 // ???,254;90,J
 fun main(args: Array<String>) {
-    val receiverQueryName = "perfect-2"
-    val senderQueryName = "perfect-3"
+    val receiverQueryName = "perfect"
+    val senderQueryName = "perfect"
     val timeoutHour = null
 
     val bucketName = "fumens"
 
     val minimumSuccessRate = 0.95
     val service = false
-    val calculate = false
+    val calculate = true
 
     val s3Client = AmazonS3ClientBuilder.standard()
             .withRegion(Regions.AP_NORTHEAST_1)

@@ -6,10 +6,10 @@ import core.mino.Mino
 import core.mino.Piece
 import core.srs.Rotate
 import main.domain.*
-import org.assertj.core.api.Assertions.assertThat
-import org.junit.jupiter.api.Test
 import main.percent.CachedSolutionLoader
 import main.percent.Index
+import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.Test
 import java.nio.file.Paths
 
 
@@ -65,7 +65,6 @@ class FileBaseMessageInvokerTest {
         assertThat(results.allCount).isEqualTo(Counter(0))
         assertThat(results.details).isEmpty()
     }
-
 
     @Test
     fun test2() {
