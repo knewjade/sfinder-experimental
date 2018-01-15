@@ -1,11 +1,16 @@
+import com.amazonaws.regions.Regions
+import com.amazonaws.services.s3.AmazonS3ClientBuilder
+
 buildscript {
-    ext.kotlin_version = '1.2.0'
+    ext.kotlin_version = '1.2.10'
 
     repositories {
         mavenCentral()
     }
+
     dependencies {
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+        classpath "com.amazonaws:aws-java-sdk-s3:1.11.+"
     }
 }
 
@@ -25,6 +30,20 @@ dependencies {
     compile project(":solution-finder")
     compile "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
     testCompile group: 'junit', name: 'junit', version: '4.12'
+    compile "com.amazonaws:aws-java-sdk-s3:1.11.+"
+    compile "com.amazonaws:aws-java-sdk-sqs:1.11.+"
+
+    testCompile 'org.junit.jupiter:junit-jupiter-api:5.0.1'
+    testCompile 'org.junit.jupiter:junit-jupiter-engine:5.0.1'
+    testCompile 'org.junit.jupiter:junit-jupiter-params:5.0.1'
+
+    // for assertions
+    testCompile 'org.assertj:assertj-core:3.+'
+
+    // for IDE runner
+    testRuntime 'org.junit.platform:junit-platform-launcher:1.0.1'
+
+    compile 'org.openjdk.jol:jol-core:0.+'
 }
 
 compileKotlin {
@@ -34,9 +53,55 @@ compileTestKotlin {
     kotlinOptions.jvmTarget = "1.8"
 }
 
-task runFinder(type: JavaExec) {
-    main = "Main"
-    classpath = sourceSets.main.runtimeClasspath
-    args('apple', 'banana', 'cherry')
-    args 'durian'
+// gradle jarOutside -Pmain="Main"
+jar {
+    def className = 'Main'
+    if (project.hasProperty('main')) {
+        String str = project.main
+        def list = Arrays.asList str.split('\\s+')
+        className = list[0]
+    }
+    println className
+
+    manifest.attributes 'Main-Class': className
+    from configurations.compile.collect {
+        it.isDirectory() ? it : zipTree(it)
+    }
+}
+
+def jarName = String.format '%s-%s.jar', archivesBaseName, version
+def srcJarFile = file libsDir.canonicalPath + File.separator + jarName
+
+// gradle jarToS3 -Pmain="MainKt"
+task jarToS3(dependsOn: jar) {
+    group "build"
+
+    doLast {
+        def s3 = AmazonS3ClientBuilder.standard()
+                .withRegion(Regions.AP_NORTHEAST_1)
+                .build()
+
+        assert srcJarFile.exists()
+
+        // Get next build number
+        def bucketName = "sfinder"
+        def prefix = "bins/sfinder-experimental/${version}"
+        def number_key = prefix + "/_last-build-number"
+        if (!s3.doesObjectExist(bucketName, number_key))
+            s3.putObject(bucketName, number_key, "0")
+
+        def object = s3.getObject(bucketName, number_key)
+        def next_number = Integer.valueOf(object.objectContent.text) + 1
+        def next_number_format = String.format("%04d", next_number)
+        s3.putObject(bucketName, number_key, next_number_format)
+
+        assert next_number_format.equals(s3.getObject(bucketName, number_key).objectContent.text)
+
+        // Upload jar
+        def uploadKey = "${prefix}/${next_number_format}/${archivesBaseName}.jar"
+        s3.putObject(bucketName, uploadKey, srcJarFile)
+
+        println "s3 commands:"
+        println "aws s3 cp s3://${bucketName}/${uploadKey} ${archivesBaseName}.jar"
+    }
 }

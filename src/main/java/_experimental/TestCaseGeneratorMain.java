@@ -69,7 +69,7 @@ public class TestCaseGeneratorMain {
                         commands += " --hold no";
 
                     if (isPattern)
-                        commands += " -f csv -k pattern";
+                        commands += " -f csv -keys pattern";
 
                     if (isReserved)
                         commands += " -r true";

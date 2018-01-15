@@ -31,6 +31,7 @@ import core.mino.MinoFactory;
 import core.mino.MinoShifter;
 import core.mino.Piece;
 import core.srs.MinoRotation;
+import exceptions.FinderExecuteException;
 import helper.EasyPath;
 import helper.EasyPool;
 import helper.EasyTetfu;
@@ -71,7 +72,7 @@ public class IfSelector {
         }
     }
 
-    public static void main(String[] args) throws ExecutionException, InterruptedException, IOException, SyntaxException {
+    public static void main(String[] args) throws ExecutionException, InterruptedException, IOException, SyntaxException, FinderExecuteException {
         ExecutorService executorService = Executors.newFixedThreadPool(4);
 
         int width = 3;
@@ -95,7 +96,7 @@ public class IfSelector {
         CheckerUsingHoldThreadLocal<Action> checkerThreadLocal = new CheckerUsingHoldThreadLocal<>();
         LockedReachableThreadLocal reachableThreadLocal = new LockedReachableThreadLocal(minoFactory, minoShifter, minoRotation, height);
         CheckerCommonObj commonObj = new CheckerCommonObj(minoFactory, candidateThreadLocal, checkerThreadLocal, reachableThreadLocal);
-        ConcurrentCheckerUsingHoldInvoker invoker = new ConcurrentCheckerUsingHoldInvoker(executorService, commonObj, fromDepth);
+        ConcurrentCheckerUsingHoldInvoker invoker = new ConcurrentCheckerUsingHoldInvoker(executorService, commonObj);
 
         PieceCounter allIncluded = new PieceCounter(Piece.valueList());
 

@@ -23,6 +23,7 @@ import core.mino.MinoFactory;
 import core.mino.MinoShifter;
 import core.mino.Piece;
 import core.srs.MinoRotation;
+import exceptions.FinderExecuteException;
 import searcher.checkmate.CheckmateNoHold;
 
 import java.io.IOException;
@@ -33,7 +34,7 @@ import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 
 public class PutterMain2 {
-    public static void main(String[] args) throws ExecutionException, InterruptedException, IOException, SyntaxException {
+    public static void main(String[] args) throws SyntaxException, FinderExecuteException {
         List<String> setupPattern = Arrays.asList(
 //                "I,LAST_OPERATION,L,J",
 //                "I,LAST_OPERATION,S,Z",
@@ -136,7 +137,7 @@ public class PutterMain2 {
         PatternGenerator verifyGenerator = new LoadedPatternGenerator("*!");
         List<Pieces> searchingBlocks = verifyGenerator.blocksStream().collect(Collectors.toList());
 
-        ConcurrentCheckerUsingHoldInvoker invoker = new ConcurrentCheckerUsingHoldInvoker(executorService, commonObj, verifyGenerator.getDepth());
+        ConcurrentCheckerUsingHoldInvoker invoker = new ConcurrentCheckerUsingHoldInvoker(executorService, commonObj);
 
         for (Pair<Field, Integer> pair : results) {
             if (pair.getValue() <= 1)
@@ -197,7 +198,7 @@ public class PutterMain2 {
                         }
                         double successPercent = tree.getSuccessPercent() * 100;
                         return new Pair<>(field, successPercent);
-                    } catch (ExecutionException | InterruptedException e) {
+                    } catch (FinderExecuteException e) {
                         e.printStackTrace();
                         System.exit(1);
                     }

@@ -22,6 +22,7 @@ import core.mino.MinoFactory;
 import core.mino.MinoShifter;
 import core.mino.Piece;
 import core.srs.MinoRotation;
+import exceptions.FinderExecuteException;
 import lib.MyFiles;
 import searcher.common.validator.PerfectValidator;
 
@@ -30,13 +31,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 
 public class PutterMain {
-    public static void main(String[] args) throws ExecutionException, InterruptedException, IOException, SyntaxException {
+    public static void main(String[] args) throws IOException, SyntaxException, FinderExecuteException {
         MinoFactory minoFactory = new MinoFactory();
         PerfectValidator validator = new PerfectValidator();
         PutterUsingHold<Action> putter = new PutterUsingHold<>(minoFactory, validator);
@@ -63,8 +63,7 @@ public class PutterMain {
         List<Pieces> searchingPieces = blocksGenerator.blocksStream()
                 .collect(Collectors.toList());
 
-        int fromDepth = blocksGenerator.getDepth();
-        ConcurrentCheckerUsingHoldInvoker invoker = new ConcurrentCheckerUsingHoldInvoker(executorService, commonObj, fromDepth);
+        ConcurrentCheckerUsingHoldInvoker invoker = new ConcurrentCheckerUsingHoldInvoker(executorService, commonObj);
 
         HashMap<Field, Connect> map = new HashMap<>();
         Comparator<Connect> connectComparator = Comparator.<Connect>comparingDouble(o -> o.percent).reversed();
@@ -102,7 +101,7 @@ public class PutterMain {
                     continue;
                 }
 
-//                System.out.println(i);
+//                System.out.println(calculateCount);
 
                 List<Pair<Pieces, Boolean>> search = invoker.search(field, searchingPieces, maxClearLine, maxDepth);
                 AnalyzeTree tree = new AnalyzeTree();
