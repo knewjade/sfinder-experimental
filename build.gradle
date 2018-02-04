@@ -2,7 +2,7 @@ import com.amazonaws.regions.Regions
 import com.amazonaws.services.s3.AmazonS3ClientBuilder
 
 buildscript {
-    ext.kotlin_version = '1.2.10'
+    ext.kotlin_version = '1.2.21'
 
     repositories {
         mavenCentral()
@@ -33,17 +33,15 @@ dependencies {
     compile "com.amazonaws:aws-java-sdk-s3:1.11.+"
     compile "com.amazonaws:aws-java-sdk-sqs:1.11.+"
 
-    testCompile 'org.junit.jupiter:junit-jupiter-api:5.0.1'
-    testCompile 'org.junit.jupiter:junit-jupiter-engine:5.0.1'
-    testCompile 'org.junit.jupiter:junit-jupiter-params:5.0.1'
+    testCompile 'org.junit.jupiter:junit-jupiter-api:5.0.+'
+    testCompile 'org.junit.jupiter:junit-jupiter-engine:5.0.+'
+    testCompile 'org.junit.jupiter:junit-jupiter-params:5.0.+'
 
     // for assertions
     testCompile 'org.assertj:assertj-core:3.+'
 
     // for IDE runner
-    testRuntime 'org.junit.platform:junit-platform-launcher:1.0.1'
-
-    compile 'org.openjdk.jol:jol-core:0.+'
+    testRuntime 'org.junit.platform:junit-platform-launcher:1.0.+'
 }
 
 compileKotlin {
