@@ -1,25 +1,21 @@
-import common.tetfu.common.ColorConverter
-import core.mino.MinoFactory
-import core.mino.MinoShifter
-import entry.path.LockedBuildUpListUpThreadLocal
-import searcher.pack.SizedBit
-import searcher.pack.memento.AllPassedSolutionFilter
-import searcher.pack.task.BasicMinoPackingHelper
+import best.Obj
+import best.colorize
+import best.getBest
+import best.getPieceCounters
+import common.tetfu.Tetfu
+import main.domain.Cycle
+import util.fig.Bag
+import util.fig.FigSetting
+import util.fig.FrameType
+import util.fig.generator.FieldOnlyFigGenerator
+import util.fig.output.PngWriter
 import webpage.html
 import java.io.File
 
-data class Obj(val height: Int = 4) {
-    val minoFactory = MinoFactory()
-    val colorConverter = ColorConverter()
-
-    val minoShifter = MinoShifter()
-    val sizedBit = SizedBit(3, height)
-    val taskResultHelper = BasicMinoPackingHelper()
-    val solutionFilter = AllPassedSolutionFilter()
-    val buildUpStreamThreadLocal = LockedBuildUpListUpThreadLocal(height)
-}
-
 fun main(args: Array<String>) {
+    val obj = Obj()
+    val maxCycle = 8
+
     val html = html {
         head {
             meta {
@@ -33,19 +29,19 @@ fun main(args: Array<String>) {
         body {
             nav {
                 ul {
-                    (1..8).forEach { count ->
-                        a(href = "#count$count") {  +"$count 回目" }
+                    (1..maxCycle).forEach { count ->
+                        a(href = "#count$count") { +"$count 回目" }
                     }
                 }
             }
-            (1..8).forEach { count ->
+            (1..maxCycle).forEach { count ->
                 section(attr = mapOf("id" to "count$count")) {
                     span { +"$count 回目" }
 
-                    val articleData = calcArticleData()
+                    val articleData = calcArticleData(obj, count)
                     articleData.sortedBy { -it.percent }.forEach { data ->
                         article {
-                            span(attr = mapOf("id" to "m")) { +data.name }
+                            span(attr = mapOf("id" to "m")) { +data.mino }
                             img(src = "./img/${data.image}.png")
                             span(attr = mapOf("id" to "p")) { +"%.3f %%".format(data.percent) }
                             span(attr = mapOf("id" to "c")) { +"(%d/%d)".format(data.success, data.allCount) }
@@ -56,17 +52,54 @@ fun main(args: Array<String>) {
         }
     }
 
-    println(html.generate())
+//    println(html.generate())
     File("output/index.html").writeText(html.generate("", ""))
 }
 
-private fun calcArticleData(): List<ArticleData> {
-    return listOf(ArticleData())
+private fun calcArticleData(obj: Obj, count: Int): List<ArticleData> {
+    val cycle = Cycle(count)
+    println(cycle)
+
+    val pieceCounters = getPieceCounters(cycle)
+    println(pieceCounters.size)
+
+    val bests = pieceCounters.map { it to getBest(it, cycle)!! }.toMap()
+
+    return bests.map {
+        val pieceCounter = it.key
+        val pair = it.value
+        val result = pair.first
+
+        val field = colorize(pieceCounter, result.fieldData, obj)
+
+        val mino = pieceCounter.blocks.joinToString("") { it.name }
+
+        generatePng(cycle, mino, field, obj)
+
+        ArticleData(mino, "%s_%03d".format(mino, cycle.number), result.success.value, pair.second)
+    }.toList()
 }
 
-data class ArticleData(val name: String = "hello") {
-    val image: String = "hello"
-    val success: Int = 1
-    val allCount: Int = 10
+fun generatePng(cycle: Cycle, mino: String, field: String, obj: Obj) {
+    val prefix = String.format("output/img/%s", mino)
+    File(prefix).parentFile.mkdirs()
+    val minoFactory = obj.minoFactory
+    val colorConverter = obj.colorConverter
+    val setting = FigSetting(FrameType.NoFrame, obj.height, 0)
+
+    val fieldOnlyFigGenerator = FieldOnlyFigGenerator(setting, minoFactory, colorConverter)
+    val writer = PngWriter(minoFactory, colorConverter, fieldOnlyFigGenerator, Bag.EMPTY, 0, prefix, cycle.number - 1)
+
+    val pages = Tetfu(minoFactory, colorConverter).decode(field)
+    val page = pages[0]
+    writer.write(listOf(page))
+}
+
+data class ArticleData(
+        val mino: String,
+        val image: String,
+        val success: Int,
+        val allCount: Int
+) {
     val percent: Double = success * 100.0 / allCount
 }
