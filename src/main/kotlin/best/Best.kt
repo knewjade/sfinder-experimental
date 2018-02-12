@@ -1,17 +1,24 @@
 package best
 
 import common.datastore.MinoOperationWithKey
+import common.datastore.Operations
 import common.datastore.PieceCounter
+import common.datastore.action.Action
 import common.iterable.PermutationIterable
 import common.order.ForwardOrderLookUp
+import common.parser.OperationTransform
 import common.pattern.LoadedPatternGenerator
 import common.tetfu.Tetfu
+import common.tetfu.TetfuPage
 import common.tetfu.common.ColorConverter
 import common.tetfu.field.ColoredFieldView
+import core.action.candidate.LockedCandidate
 import core.field.Field
 import core.field.FieldFactory
+import core.field.FieldView
 import core.mino.MinoFactory
 import core.mino.MinoShifter
+import core.srs.MinoRotation
 import entry.path.LockedBuildUpListUpThreadLocal
 import helper.EasyTetfu
 import helper.Patterns
@@ -19,6 +26,8 @@ import main.caller.ContentCaller
 import main.domain.Cycle
 import main.domain.FieldData
 import main.domain.Result
+import searcher.PutterNoHold
+import searcher.common.validator.PerfectValidator
 import searcher.pack.InOutPairField
 import searcher.pack.SeparableMinos
 import searcher.pack.SizedBit
@@ -43,6 +52,9 @@ data class Obj(val height: Int = 4) {
     val taskResultHelper = BasicMinoPackingHelper()
     val solutionFilter = AllPassedSolutionFilter()
     val buildUpStreamThreadLocal = LockedBuildUpListUpThreadLocal(height)
+
+    val minoRotation = MinoRotation()
+    val perfectValidator = PerfectValidator()
 }
 
 fun getPieceCounters(cycle: Cycle): Set<PieceCounter> {
@@ -87,7 +99,6 @@ fun getBest(pieceCounter: PieceCounter, cycle: Cycle): Pair<Result, Int>? {
     return bestResult?.let { it to max }
 }
 
-
 fun colorize(pieceCounter: PieceCounter, monoFieldData: FieldData, obj: Obj): String {
     val minoFactory = obj.minoFactory
     val colorConverter = obj.colorConverter
@@ -99,8 +110,7 @@ fun colorize(pieceCounter: PieceCounter, monoFieldData: FieldData, obj: Obj): St
     val pages = Tetfu(minoFactory, colorConverter).decode(monoFieldData.raw)
     val page = pages[0]
 
-    val fieldData = ColoredFieldView.toString(page.field, 4, "").replace('0', ' ')
-    val field = FieldFactory.createField(fieldData)
+    val field = getField(page, pieceCounter, obj)
 
     // ミノリストの作成
     val notFilledField = field.freeze(4)
@@ -127,6 +137,45 @@ fun colorize(pieceCounter: PieceCounter, monoFieldData: FieldData, obj: Obj): St
     val encodeUrl = EasyTetfu().encodeUrl(FieldFactory.createField(4), operations, 4)
 
     return encodeUrl.removePrefix("http://fumen.zui.jp/?v115@")
+}
+
+private fun getField(page: TetfuPage, pieceCounter: PieceCounter, obj: Obj): Field {
+    val fieldData = ColoredFieldView.toString(page.field, obj.height, "").replace('0', ' ')
+    val field = FieldFactory.createField(fieldData)
+    if (page.comment == "4") {
+        return field
+    } else {
+        return restoreField(obj, pieceCounter, field)
+    }
+}
+
+private fun restoreField(obj: Obj, pieceCounter: PieceCounter, field: Field): Field {
+    val putter = PutterNoHold<Action>(obj.minoFactory, obj.perfectValidator)
+    val lockedCandidate = LockedCandidate(obj.minoFactory, obj.minoShifter, obj.minoRotation, obj.height)
+
+    for (blocks in PermutationIterable(pieceCounter.blocks, pieceCounter.blocks.size)) {
+        val first = putter.first(FieldFactory.createField(obj.height), blocks, lockedCandidate, obj.height, 10)
+
+        first.filter { field == it.field }
+                .forEach {
+                    val operations = Operations(it.history.operationStream)
+                    val initField = FieldFactory.createField(4)
+                    val operationWithKeys = OperationTransform.parseToOperationWithKeys(initField, operations, obj.minoFactory, obj.height)
+
+                    val newField = FieldFactory.createField(obj.height)
+                    for (operationWithKey in operationWithKeys) {
+                        val fieldForMino = FieldFactory.createField(obj.height)
+                        fieldForMino.put(operationWithKey.mino, operationWithKey.x, operationWithKey.y)
+                        fieldForMino.insertWhiteLineWithKey(operationWithKey.needDeletedKey)
+
+                        newField.merge(fieldForMino)
+                    }
+
+                    return newField
+                }
+    }
+
+    error("No reachable: ${pieceCounter} " + FieldView.toString(field))
 }
 
 private fun getDeleteKeyMask(notFilledField: Field, maxHeight: Int): Long {
@@ -159,6 +208,11 @@ fun getResult(initField: Field, searcher: SetupPackSearcher, pieceCounter: Piece
 
         // 地形の中で組むことができるものがないときはスキップ
         !sampleOperations.isEmpty()
+    }
+
+    if (result == null) {
+        println(FieldView.toString(initField))
+        println(pieceCounter)
     }
 
     return result

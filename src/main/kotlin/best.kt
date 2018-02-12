@@ -43,8 +43,13 @@ fun main(args: Array<String>) {
                         article {
                             span(attr = mapOf("id" to "m")) { +data.mino }
                             img(src = "./img/${data.image}.png")
-                            span(attr = mapOf("id" to "p")) { +"%.3f %%".format(data.percent) }
-                            span(attr = mapOf("id" to "c")) { +"(%d/%d)".format(data.success, data.allCount) }
+                            if (0 <= data.allCount) {
+                                span(attr = mapOf("id" to "p")) { +"%.3f %%".format(data.percent) }
+                                span(attr = mapOf("id" to "c")) { +"(%d/%d)".format(data.success, data.allCount) }
+                            } else {
+                                span(attr = mapOf("id" to "p")) { +"---" }
+                                span(attr = mapOf("id" to "c")) { +"(---)" }
+                            }
                         }
                     }
                 }
@@ -63,16 +68,17 @@ private fun calcArticleData(obj: Obj, count: Int): List<ArticleData> {
     val pieceCounters = getPieceCounters(cycle)
     println(pieceCounters.size)
 
-    val bests = pieceCounters.map { it to getBest(it, cycle)!! }.toMap()
+    val bests = pieceCounters.map { it to getBest(it, cycle) }.toMap()
 
     return bests.map {
         val pieceCounter = it.key
-        val pair = it.value
+        val mino = pieceCounter.blocks.joinToString("") { it.name }
+
+        val pair = it.value ?: return@map ArticleData(mino, "nothing", 0, -1)
+
         val result = pair.first
 
         val field = colorize(pieceCounter, result.fieldData, obj)
-
-        val mino = pieceCounter.blocks.joinToString("") { it.name }
 
         generatePng(cycle, mino, field, obj)
 
