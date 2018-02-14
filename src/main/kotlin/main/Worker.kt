@@ -3,7 +3,7 @@ package main
 import com.amazonaws.services.sqs.model.SendMessageBatchRequestEntry
 import common.parser.StringEnumTransform
 import core.mino.Piece
-import exceptions.FinderExecuteCancelException
+import exceptions.FinderExecuteException
 import lib.Stopwatch
 import main.aws.AWS
 import main.aws.SQSMessage
@@ -55,7 +55,7 @@ class Worker(
         }
     }
 
-    @Throws(FinderExecuteCancelException::class)
+    @Throws(FinderExecuteException::class)
     private fun search(message: SQSMessage) {
         val split = message.body.trim().split(",")
         val cycle = Cycle(split[0].toInt())

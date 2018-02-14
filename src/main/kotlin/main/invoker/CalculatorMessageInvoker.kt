@@ -11,7 +11,6 @@ import concurrent.checker.invoker.using_hold.SingleCheckerUsingHoldInvoker
 import core.action.candidate.LockedCandidate
 import core.mino.MinoFactory
 import core.mino.Piece
-import exceptions.FinderExecuteCancelException
 import main.domain.*
 import main.percent.Index
 
@@ -57,12 +56,8 @@ class CalculatorMessageInvoker(private val headPieces: HeadPieces, private val f
             val state = State(freeze, initState.maxClearLine - clearLine)
 
             val success = if (0 < maxDepth) {
-                try {
-                    val list = invoker.search(state.field, allPieces, state.maxClearLine, maxDepth)
-                    list.count { it.value }
-                } catch (e: FinderExecuteCancelException) {
-                    -1
-                }
+                val list = invoker.search(state.field, allPieces, state.maxClearLine, maxDepth)
+                list.count { it.value }
             } else {
                 allPieces.size
             }
