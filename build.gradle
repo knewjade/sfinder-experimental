@@ -23,3 +23,18 @@ buildscript {
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
     }
 }
+
+sourceCompatibility = 1.8
+
+tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).all {
+    kotlinOptions {
+        jvmTarget = "1.8"
+    }
+}
+
+jar {
+    manifest.attributes 'Main-Class': 'ExpMain'
+    from configurations.compile.collect {
+        it.isDirectory() ? it : zipTree(it)
+    }
+}
