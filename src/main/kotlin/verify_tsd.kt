@@ -1,4 +1,3 @@
-import com.sun.javaws.exceptions.InvalidArgumentException
 import common.datastore.BlockField
 import common.tetfu.Tetfu
 import common.tetfu.TetfuElement
@@ -6,7 +5,6 @@ import common.tetfu.common.ColorConverter
 import common.tetfu.common.ColorType
 import common.tetfu.field.ArrayColoredField
 import common.tetfu.field.ColoredField
-import common.tetfu.field.ColoredFieldView
 import core.mino.MinoFactory
 import java.util.*
 
