@@ -1,5 +1,7 @@
 import common.datastore.MinimalOperationWithKey
+import common.datastore.MinoOperationWithKey
 import common.datastore.PieceCounter
+import common.parser.OperationTransform
 import commons.Commons
 import core.field.Field
 import core.field.FieldFactory
@@ -14,12 +16,14 @@ import entry.setup.FieldOperationWithKey
 import lib.BooleanWalker
 import searcher.pack.separable_mino.AllMinoFactory
 import java.util.*
+import java.util.concurrent.ConcurrentHashMap
 import java.util.stream.Collectors
 import java.util.stream.Stream
 
 fun main(args: Array<String>) {
     val runner = Runner()
-    runner.test()
+//    runner.test()
+    runner.test2()
 }
 
 class Runner(private val height: Int = 12) {
@@ -51,6 +55,9 @@ class Runner(private val height: Int = 12) {
 
         val colorize = Colorize(height)
         candidates.forEach {
+            if (it.requiredBlock.isPerfect) {
+                return@forEach
+            }
             println(it.current)
             println(it.next)
             println(FieldView.toString(it.requiredBlock))
@@ -67,7 +74,30 @@ class Runner(private val height: Int = 12) {
             val k = stream.count()
             println(k)
             println("##")
+            return
         }
+    }
+
+    fun test2() {
+        val requiredBlock = FieldFactory.createField("" +
+                "__X_______" +
+                "__X_______" +
+                "__________" +
+                "__X_______"
+        )
+        val notAllowBlock = FieldFactory.createField("" +
+                "_X________" +
+                "XXX_______" +
+                "_X________"
+        )
+
+        val colorize = Colorize2(height)
+        val list = colorize.run(requiredBlock)
+        println(list.size)
+
+        list
+                .filter { notAllowBlock.canMerge(it.toField(height)) }
+                .forEach { println(FieldView.toString(it.toField(height))) }
     }
 
     private fun parseLeftCandidates(currentMino: Mino, px: Int, py: Int): List<Candidate> {
@@ -330,7 +360,7 @@ class Colorize(private val height: Int = 12) {
 
                 val nextResult = RecursiveResult2(result, operationWithKey)
 
-                val stream = run(freeze, k, newPieceCounter, nextResult, index+1)
+                val stream = run(freeze, k, newPieceCounter, nextResult, index + 1)
                 results = Stream.concat(results, stream)
             }
         }
@@ -339,9 +369,87 @@ class Colorize(private val height: Int = 12) {
     }
 }
 
+class Colorize2(private val height: Int = 12) {
+    private val minoFactory = MinoFactory()
+    private val minoShifter = MinoShifter()
+    private val allOperations: List<FieldOperationWithKey>
+
+    private val maps = ConcurrentHashMap<Field, List<Result2>>()
+
+    private val eachPieceCounter: EnumMap<Piece, PieceCounter>
+
+    init {
+        val pivotField = FieldFactory.createField(height)
+        (0 until height).forEach { pivotField.setBlock(4, it) }
+
+        allOperations = AllMinoFactory(minoFactory, minoShifter, 10, height, 0).create()
+                .map { FieldOperationWithKey(it) }
+                .filter { !it.field.canMerge(pivotField) }
+                .toList()
+        eachPieceCounter = EnumMap(Piece.valueList().map { it to PieceCounter(listOf(it)) }.toMap())
+        maps[FieldFactory.createField(height)] = Collections.singletonList(EmptyResult2(height))
+    }
+
+    fun run(field: Field): List<SlideResult2> {
+        var minX: Int? = null
+        for (x in 0 until 10) {
+            val exists = (0 until height).any { !field.isEmpty(x, it) }
+            if (exists) {
+                minX = x
+                break
+            }
+        }
+
+        if (minX == null) {
+            throw IllegalStateException("no block")
+        }
+
+        val freeze = field.freeze(height)
+        freeze.slideRight(9 - minX)
+        freeze.slideLeft(5)
+
+        println(FieldView.toString(freeze))
+
+        return innerRunner(freeze).map { SlideResult2(it, minX - 4) }
+    }
+
+    private fun innerRunner(requiredBlock: Field): List<Result2> {
+        val cache = maps[requiredBlock]
+        if (cache != null) {
+            return cache
+        }
+
+        val results = allOperations
+                .parallelStream()
+                .flatMap { operation ->
+                    val operationField = operation.field
+                    if (requiredBlock.canMerge(operationField)) {
+                        return@flatMap Stream.empty<Result2>()
+                    }
+
+                    val freeze = requiredBlock.freeze(height)
+                    freeze.reduce(operationField)
+
+                    val currentPieceCounter = eachPieceCounter[operation.piece]!!
+
+                    innerRunner(freeze)
+                            .filter { !it.pieceCounter.containsAll(currentPieceCounter) }
+                            .filter { it.field.canMerge(operationField) }
+                            .map { RecursiveResult2(it, operation) }.stream()
+                }
+                .collect(Collectors.toList())
+
+        maps[requiredBlock] = results
+
+        return results
+    }
+}
+
 interface Result2 {
     val field: Field
     val size: Int
+    val pieceCounter: PieceCounter
+    val operations: Stream<FieldOperationWithKey>
 }
 
 class EmptyResult2(private val height: Int) : Result2 {
@@ -351,6 +459,12 @@ class EmptyResult2(private val height: Int) : Result2 {
         }
 
     override val size = 0
+    override val pieceCounter = PieceCounter.EMPTY
+
+    override val operations: Stream<FieldOperationWithKey>
+        get() {
+            return Stream.empty<FieldOperationWithKey>()
+        }
 }
 
 class RecursiveResult2(
@@ -370,4 +484,60 @@ class RecursiveResult2(
         get() {
             return result.size + 1
         }
+
+    override val pieceCounter: PieceCounter
+        get() {
+            val pieceCounter = result.pieceCounter
+            return pieceCounter.addAndReturnNew(Stream.of(operationWithKey.piece))
+        }
+
+    override val operations: Stream<FieldOperationWithKey>
+        get() {
+            return Stream.concat(result.operations, Stream.of(operationWithKey))
+        }
+}
+
+class SlideResult2(
+        private val result: Result2,
+        private val slideX: Int
+) {
+    val operations: Stream<MinoOperationWithKey>
+        get () {
+            return result.operations.map { SlideMinoOperationWithKey(it.operation, slideX) }
+        }
+
+    fun toField(height: Int): Field {
+        val operations = this.operations.collect(Collectors.toList())
+        return OperationTransform.parseToField(operations, height)
+    }
+}
+
+class SlideMinoOperationWithKey(private val operation: MinoOperationWithKey, private val slideX: Int) : MinoOperationWithKey {
+    override fun getRotate(): Rotate {
+        return operation.rotate
+    }
+
+    override fun getNeedDeletedKey(): Long {
+        return operation.needDeletedKey
+    }
+
+    override fun getUsingKey(): Long {
+        return operation.usingKey
+    }
+
+    override fun getMino(): Mino {
+        return operation.mino
+    }
+
+    override fun getPiece(): Piece {
+        return operation.piece
+    }
+
+    override fun getX(): Int {
+        return operation.x + slideX
+    }
+
+    override fun getY(): Int {
+        return operation.y
+    }
 }
