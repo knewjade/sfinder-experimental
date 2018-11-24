@@ -1,13 +1,21 @@
+import common.datastore.MinimalOperationWithKey
+import common.datastore.PieceCounter
+import commons.Commons
 import core.field.Field
 import core.field.FieldFactory
 import core.field.FieldView
 import core.mino.Mino
 import core.mino.MinoFactory
+import core.mino.MinoShifter
 import core.mino.Piece
 import core.srs.MinoRotation
 import core.srs.Rotate
+import entry.setup.FieldOperationWithKey
 import lib.BooleanWalker
+import searcher.pack.separable_mino.AllMinoFactory
+import java.util.*
 import java.util.stream.Collectors
+import java.util.stream.Stream
 
 fun main(args: Array<String>) {
     val runner = Runner()
@@ -17,25 +25,149 @@ fun main(args: Array<String>) {
 class Runner(private val height: Int = 12) {
     private val minoFactory = MinoFactory()
     private val minoRotation = MinoRotation()
+    private val minoShifter = MinoShifter()
+    private val checker = Checker(minoFactory, minoRotation, height)
 
     fun test() {
-        val currentMino = minoFactory.create(Piece.T, Rotate.Spawn)
+        // Tをすべての場所に置いたあとまわす
+        val candidates = Rotate.values().flatMap { rotate ->
+            // 現在のミノ
+            val currentMino = minoFactory.create(Piece.T, rotate)
 
-        (-currentMino.minY until height - currentMino.maxY).forEach { py ->
-            (-currentMino.minX until 10 - currentMino.maxX).forEach { px ->
-                val (field, maps) = checkLeft(currentMino, px, py)
-                val freeze = field.freeze(height)
-                freeze.inverse()
-                freeze.remove(currentMino, px, py)
-                println(FieldView.toString(freeze))
-                println("#")
+            // 回転後にy軸でもっとも大きく移動する量
+            val patterns = minoRotation.getLeftPatternsFrom(currentMino)
+            val maxPatternY = patterns.map { it[1] }.max()!!
 
+            (-currentMino.minY until height - currentMino.maxY - maxPatternY).flatMap { py ->
+                (-currentMino.minX until 10 - currentMino.maxX).flatMap { px ->
+                    parseLeftCandidates(currentMino, px, py)
+                }
+            } + (-currentMino.minY until height - currentMino.maxY - maxPatternY).flatMap { py ->
+                (-currentMino.minX until 10 - currentMino.maxX).flatMap { px ->
+                    parseRightCandidates(currentMino, px, py)
+                }
             }
         }
 
+        val colorize = Colorize(height)
+        candidates.forEach {
+            println(it.current)
+            println(it.next)
+            println(FieldView.toString(it.requiredBlock))
+
+            val notAllowBlock = it.effectBlock.freeze(height)
+            notAllowBlock.reduce(it.requiredBlock)
+            notAllowBlock.put(it.current.mino, it.current.x, it.current.y)
+            notAllowBlock.put(it.next.mino, it.next.x, it.next.y)
+
+            println("*")
+            println(FieldView.toString(notAllowBlock))
+
+            val stream = colorize.run(it.requiredBlock, notAllowBlock)
+            val k = stream.count()
+            println(k)
+            println("##")
+        }
     }
 
-    fun checkLeft(current: Mino, x: Int, y: Int): Pair<Field, Map<Int, List<Field>>> {
+    private fun parseLeftCandidates(currentMino: Mino, px: Int, py: Int): List<Candidate> {
+        val patterns = minoRotation.getLeftPatternsFrom(currentMino)
+
+        // effectBlock // 回転に影響を与えるブロック // 回転前のミノは取り除く
+        val (effectBlock, maps) = checker.rotateLeft(currentMino, px, py)
+        val nextRotate = currentMino.rotate.leftRotate
+
+        return maps
+                .filterKeys { 0 <= it }
+                .flatMap { entry ->
+                    val index = entry.key
+                    val fields = entry.value
+                    fields.mapNotNull { requiredBlock ->
+                        val pattern = patterns[index]
+
+                        val piece = currentMino.piece
+                        val nextMino = minoFactory.create(piece, nextRotate)
+                        val current = MinimalOperationWithKey(currentMino, px, py, 0L)
+                        val next = MinimalOperationWithKey(nextMino, px + pattern[0], py + pattern[1], 0L)
+                        parseCandidate(current, next, effectBlock, requiredBlock)
+                    }
+                }
+    }
+
+    private fun parseRightCandidates(currentMino: Mino, px: Int, py: Int): List<Candidate> {
+        val patterns = minoRotation.getLeftPatternsFrom(currentMino)
+
+        val (effectBlock, maps) = checker.rotateRight(currentMino, px, py)
+        val nextRotate = currentMino.rotate.rightRotate
+
+        return maps
+                .filterKeys { 0 <= it }
+                .flatMap { entry ->
+                    val index = entry.key
+                    val fields = entry.value
+                    fields.mapNotNull { needBlock ->
+                        val pattern = patterns[index]
+
+                        val piece = currentMino.piece
+                        val nextMino = minoFactory.create(piece, nextRotate)
+                        val current = MinimalOperationWithKey(currentMino, px, py, 0L)
+                        val next = MinimalOperationWithKey(nextMino, px + pattern[0], py + pattern[1], 0L)
+                        parseCandidate(current, next, effectBlock, needBlock)
+                    }
+                }
+    }
+
+    private fun parseCandidate(
+            current: MinimalOperationWithKey,
+            next: MinimalOperationWithKey,
+            effectBlock: Field,
+            requiredBlock: Field
+    ): Candidate? {
+        // すべてのブロック  // effectBlock + T回転前のブロック
+        val allBlock = effectBlock.freeze(height)
+        allBlock.put(current.mino, current.x, current.y)
+
+        // effectBlock外のTの隅
+        val noEffectField = FieldFactory.createField(height)
+        val ones = listOf(-1, 1)
+        ones.forEach { dy ->
+            ones.forEach { dx ->
+                val x = next.x + dx
+                val y = next.y + dy
+                if (x in 0..9 && y in 0..height) {
+                    noEffectField.setBlock(x, y)
+                }
+            }
+        }
+        noEffectField.reduce(allBlock)
+
+        // requiredBlock + Tスピン用のブロック
+        val require = requiredBlock.freeze(height)
+        require.merge(noEffectField)
+
+        if (Commons.isTSpin(require, next.x, next.y)) {
+            val field = FieldFactory.createField(height)
+            (next.y + next.mino.minY..next.y + next.mino.maxY).forEach { field.fillLine(it) }
+            field.reduce(allBlock)
+            field.merge(requiredBlock)
+            field.put(next.mino, next.x, next.y)
+
+            val clearedLine = field.freeze(height).clearLine()
+            if (0 < clearedLine) {
+                return Candidate(current, next, effectBlock, requiredBlock)
+            }
+        }
+
+        return null
+    }
+}
+
+class Checker(
+        private val minoFactory: MinoFactory,
+        private val minoRotation: MinoRotation,
+        private val height: Int
+) {
+    fun rotateLeft(current: Mino, x: Int, y: Int): Pair<Field, Map<Int, List<Field>>> {
         // 回転後の移動量
         val patterns: Map<Position, Int> = minoRotation.getLeftPatternsFrom(current)
                 .mapIndexed { index, pattern -> Position(pattern[0], pattern[1]) to index }
@@ -44,7 +176,7 @@ class Runner(private val height: Int = 12) {
         // 左回転後のミノ
         val leftMino = minoFactory.create(current.piece, current.rotate.leftRotate)
 
-        // 回転に影響を与えるブロック
+        // 回転に影響を与えるブロック // 回転前のミノは取り除く
         val field = FieldFactory.createField(height)
         for (pattern in patterns.keys) {
             // 回転前のミノを取り除く // 回転前にミノを置けるようにする
@@ -84,7 +216,7 @@ class Runner(private val height: Int = 12) {
                 })
     }
 
-    fun checkRight(current: Mino, x: Int, y: Int): Pair<Field, Map<Int, List<Field>>> {
+    fun rotateRight(current: Mino, x: Int, y: Int): Pair<Field, Map<Int, List<Field>>> {
         // 回転後の移動量
         val patterns: Map<Position, Int> = minoRotation.getRightPatternsFrom(current)
                 .mapIndexed { index, pattern -> Position(pattern[0], pattern[1]) to index }
@@ -134,8 +266,108 @@ class Runner(private val height: Int = 12) {
     }
 }
 
-data class Position(val x: Int, val y: Int) {
-    fun add(dx: Int, dy: Int): Position {
-        return Position(x + dx, y + dy)
+data class Position(val x: Int, val y: Int)
+
+class Candidate(
+        val current: MinimalOperationWithKey,
+        val next: MinimalOperationWithKey,
+        val effectBlock: Field,
+        val requiredBlock: Field
+)
+
+class Colorize(private val height: Int = 12) {
+    private val minoFactory = MinoFactory()
+    private val minoShifter = MinoShifter()
+    private val allOperations: Array<FieldOperationWithKey>
+
+    private val allPieceCounter = PieceCounter(Piece.valueList())
+    private val eachPieceCounter: EnumMap<Piece, PieceCounter>
+
+    init {
+        allOperations = AllMinoFactory(minoFactory, minoShifter, 10, height, Long.MAX_VALUE).create()
+                .map { FieldOperationWithKey(it) }
+                .toTypedArray()
+        eachPieceCounter = EnumMap(Piece.valueList().map { it to PieceCounter(listOf(it)) }.toMap())
     }
+
+    fun run(requiredBlock: Field, notAllowBlock: Field): Stream<Result2> {
+        return run(requiredBlock, notAllowBlock, PieceCounter.EMPTY, EmptyResult2(height), 0)
+    }
+
+    private fun run(requiredBlock: Field, notAllowBlock: Field, pieceCounter: PieceCounter, result: Result2, startIndex: Int): Stream<Result2> {
+        // すべてのブロックを置ききったとき
+        if (requiredBlock.isPerfect) {
+            return Stream.of(result)
+        }
+
+        // すべてのPieceを使い切ったとき
+        if (pieceCounter.containsAll(allPieceCounter)) {
+            return Stream.empty()
+        }
+
+        var results = Stream.empty<Result2>()
+
+        for (index in startIndex until allOperations.size) {
+            val operationWithKey = allOperations[index]
+            val currentPieceCounter = eachPieceCounter[operationWithKey.piece]
+
+            // そのPieceが使用されているときはスキップ
+            if (pieceCounter.containsAll(currentPieceCounter)) {
+                continue
+            }
+
+            // 必要なブロックを消費する
+            // 置けないブロックと重ならない
+            val field = operationWithKey.field
+            if (!requiredBlock.canMerge(field) && notAllowBlock.canMerge(field)) {
+                val newPieceCounter = pieceCounter.addAndReturnNew(currentPieceCounter)
+
+                val freeze = requiredBlock.freeze(height)
+                freeze.reduce(field)
+
+                val k = notAllowBlock.freeze(height)
+                k.merge(field)
+
+                val nextResult = RecursiveResult2(result, operationWithKey)
+
+                val stream = run(freeze, k, newPieceCounter, nextResult, index+1)
+                results = Stream.concat(results, stream)
+            }
+        }
+
+        return results
+    }
+}
+
+interface Result2 {
+    val field: Field
+    val size: Int
+}
+
+class EmptyResult2(private val height: Int) : Result2 {
+    override val field: Field
+        get() {
+            return FieldFactory.createField(height)
+        }
+
+    override val size = 0
+}
+
+class RecursiveResult2(
+        private val result: Result2,
+        private val operationWithKey: FieldOperationWithKey
+) : Result2 {
+    override val field: Field
+        get() {
+            val prevField = result.field
+            val operation = operationWithKey.operation
+            val mino = operation.mino
+            prevField.put(mino, operation.x, operation.y)
+            return prevField
+        }
+
+    override val size: Int
+        get() {
+            return result.size + 1
+        }
 }
