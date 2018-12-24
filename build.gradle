@@ -33,7 +33,7 @@ tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).all {
 }
 
 jar {
-    manifest.attributes 'Main-Class': 'ExpMain'
+    manifest.attributes 'Main-Class': 'EntryKt'
     from configurations.compile.collect {
         it.isDirectory() ? it : zipTree(it)
     }

@@ -148,7 +148,7 @@ fun main(args: Array<String>) {
 
     // Tスピン出来るものだけ表示（出力）
     println("spin-able")
-    val myFile = MyFile("output/test")
+    val myFile = MyFile("output/main.test")
     myFile.newBufferedWriter().use { writer ->
         results.forEach { result ->
             val rotateCandidate = candidateThreadLocal.get()
