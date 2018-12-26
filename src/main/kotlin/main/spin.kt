@@ -1,7 +1,6 @@
 package main
 
 import common.datastore.Operations
-import common.datastore.Result
 import common.datastore.SimpleOperation
 import common.datastore.action.Action
 import common.datastore.order.Order
@@ -11,15 +10,12 @@ import core.action.candidate.LockedCandidate
 import core.field.FieldFactory
 import core.mino.MinoFactory
 import core.mino.MinoShifter
-import core.mino.Piece
 import core.srs.MinoRotation
 import entry.path.output.MyFile
-import searcher.PutterNoHold
+import searcher.PutterReuseNoHold
 import searcher.TSpinSearchValidator
 import searcher.checkmate.CheckmateDataPool
 import searcher.core.FullSearcherCore
-import java.util.concurrent.Callable
-import java.util.concurrent.Executors
 import java.util.stream.Collectors
 
 fun main(args: Array<String>) {
@@ -41,31 +37,39 @@ fun run(headPiece: String) {
     val allPieces = generator.blocksStream().collect(Collectors.toList())
     println("allPieces=${allPieces.size}")
 
-    val thread = 4
-    println("thread=$thread")
-
-    val executorService = Executors.newFixedThreadPool(thread)
-
     val maxHeight = 15
+    val maxPieceNum = 6
+    val minoFactory = MinoFactory()
+    val minoShifter = MinoShifter()
+    val minoRotation = MinoRotation()
+
+    val candidate = LockedCandidate(minoFactory, minoShifter, minoRotation, maxHeight)
+
+    val validator = TSpinSearchValidator(minoFactory, minoShifter, minoRotation, maxHeight, maxPieceNum)
+
+    val dataPool = CheckmateDataPool()
+    val searcherCore = FullSearcherCore<Action, Order>(minoFactory, validator, dataPool)
+    val putter = PutterReuseNoHold(dataPool, searcherCore)
+
     allPieces
-            .mapIndexed { index, piecesObj ->
-                val pieces = piecesObj.pieces
-                val name = pieces.joinToString("") { it.name }
-
-                val callable = Callable<List<Result>> {
-                    println("$index: $pieces")
-
-                    val runner = Runner(maxHeight)
-                    runner.run(pieces)
+            .map { it.pieces }
+            .sortedWith(Comparator { o1, o2 ->
+                o1.forEachIndexed { index, piece1 ->
+                    val piece2 = o2[index]
+                    if (piece1 != piece2) {
+                        return@Comparator piece1.number - piece2.number
+                    }
                 }
-                name to executorService.submit(callable)
-            }
-            .forEach {
-                val name = it.first
-                val results = it.second.get()
-
+                0
+            })
+            .forEach { pieces ->
+                val name = pieces.joinToString("") { it.name }
                 println(name)
 
+                putter.first(FieldFactory.createField(maxHeight), pieces, candidate, maxHeight, pieces.size)
+
+                val results = putter.results
+                println("results=${results.size}")
                 MyFile("output/$name").newAsyncWriter().use { writer ->
                     results.forEach { result ->
                         val history = result.order.history
@@ -80,25 +84,4 @@ fun run(headPiece: String) {
                     }
                 }
             }
-
-    executorService.shutdown()
-}
-
-class Runner(private val maxHeight: Int) {
-    private val minoFactory = MinoFactory()
-    private val minoShifter = MinoShifter()
-    private val minoRotation = MinoRotation()
-
-    fun run(pieces: List<Piece>): List<Result> {
-        val validator = TSpinSearchValidator(minoFactory, minoShifter, minoRotation, maxHeight, pieces.size)
-
-        val dataPool = CheckmateDataPool()
-        val searcherCore = FullSearcherCore<Action, Order>(minoFactory, validator, dataPool)
-        val putter = PutterNoHold(dataPool, searcherCore)
-
-        val candidate = LockedCandidate(minoFactory, minoShifter, minoRotation, maxHeight)
-        putter.first(FieldFactory.createField(maxHeight), pieces, candidate, maxHeight, pieces.size)
-
-        return putter.results
-    }
 }
