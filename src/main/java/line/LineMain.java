@@ -277,31 +277,30 @@ class RecursiveLineObj implements ILineObj {
 }
 
 class LineRunner {
-    private HashMap<Long, EnumMap<Piece, List<OriginalPiece>>> maps;
+    private final HashMap<Long, EnumMap<Piece, List<OriginalPiece>>> maps;
 
     LineRunner(HashMap<Long, EnumMap<Piece, List<OriginalPiece>>> maps) {
         this.maps = maps;
     }
 
     void run(ILineObj lineObj, Consumer<ILineObj> callback) {
-        // noinspection ResultOfMethodCallIgnored
-        this.run(Stream.of(lineObj), callback).count();
+        this.run(Stream.of(lineObj), callback);
     }
 
-    private Stream<ILineObj> run(Stream<ILineObj> stream, Consumer<ILineObj> callback) {
-        return stream
-                .flatMap(lineObj -> {
+    private void run(Stream<ILineObj> stream, Consumer<ILineObj> callback) {
+        stream.parallel()
+                .forEach(lineObj -> {
                     if (lineObj.isSolution()) {
                         callback.accept(lineObj);
-                        return Stream.empty();
+                        return;
                     }
 
                     if (!lineObj.isCandidate()) {
-                        return Stream.empty();
+                        return;
                     }
 
                     Stream<ILineObj> next = this.next(lineObj);
-                    return this.run(next, callback);
+                    this.run(next, callback);
                 });
     }
 
