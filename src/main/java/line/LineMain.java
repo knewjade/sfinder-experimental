@@ -5,11 +5,14 @@ import common.datastore.PieceCounter;
 import common.parser.OperationInterpreter;
 import core.field.Field;
 import core.field.FieldFactory;
+import core.mino.MinoShifter;
 import core.mino.Piece;
 import core.neighbor.OriginalPiece;
 import core.neighbor.OriginalPieceFactory;
+import core.srs.Rotate;
 import entry.path.output.MyFile;
 import lib.AsyncBufferedFileWriter;
+import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
 import java.util.EnumMap;
@@ -20,8 +23,10 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+// 1ラインを埋めるミノの組み合わせを列挙
+// y=3が揃っている状態
 public class LineMain {
-    private static final int LINE_Y = 3;
+    public static final int LINE_Y = 3;
 
     public static void main(String[] args) {
         {
@@ -77,30 +82,9 @@ public class LineMain {
     }
 
     private static void run(int maxHeight, Field lineField, String fileName) {
-        OriginalPieceFactory pieceFactory = new OriginalPieceFactory(maxHeight);
-        Set<OriginalPiece> pieces = pieceFactory.create();
+        MinoShifter minoShifter = new MinoShifter();
 
-        HashMap<Long, EnumMap<Piece, List<OriginalPiece>>> maps = new HashMap<>();
-
-        for (int dy = 0; dy < 3; dy++) {
-            int y = LINE_Y + dy;
-            for (int x = 0; x < 10; x++) {
-                Field field = FieldFactory.createField(maxHeight);
-                field.setBlock(x, y);
-
-                EnumMap<Piece, List<OriginalPiece>> enumMap = new EnumMap<>(Piece.class);
-                for (Piece piece : Piece.valueList()) {
-                    List<OriginalPiece> piecesList = pieces.stream()
-                            .filter(originalPiece -> originalPiece.getPiece() == piece)
-                            .filter(originalPiece -> !field.canPut(originalPiece))
-                            .collect(Collectors.toList());
-
-                    enumMap.put(piece, piecesList);
-                }
-
-                maps.put(1L << (x + dy * 10), enumMap);
-            }
-        }
+        HashMap<Long, EnumMap<Piece, List<OriginalPiece>>> maps = getOriginalPieceMap(minoShifter, maxHeight);
 
         Field field = FieldFactory.createField(maxHeight);
 
@@ -118,6 +102,38 @@ public class LineMain {
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    @NotNull
+    public static HashMap<Long, EnumMap<Piece, List<OriginalPiece>>> getOriginalPieceMap(MinoShifter minoShifter, int maxHeight) {
+        OriginalPieceFactory pieceFactory = new OriginalPieceFactory(maxHeight);
+        Set<OriginalPiece> pieces = pieceFactory.create();
+
+        HashMap<Long, EnumMap<Piece, List<OriginalPiece>>> maps = new HashMap<>();
+
+        for (int dy = 0; dy < 3; dy++) {
+            int y = LINE_Y + dy;
+            for (int x = 0; x < 10; x++) {
+                Field field = FieldFactory.createField(maxHeight);
+                field.setBlock(x, y);
+
+                EnumMap<Piece, List<OriginalPiece>> enumMap = new EnumMap<>(Piece.class);
+                for (Piece piece : Piece.valueList()) {
+                    Set<Rotate> uniqueRotates = minoShifter.getUniqueRotates(piece);
+
+                    List<OriginalPiece> piecesList = pieces.stream()
+                            .filter(originalPiece -> originalPiece.getPiece() == piece)
+                            .filter(originalPiece -> uniqueRotates.contains(originalPiece.getRotate()))
+                            .filter(originalPiece -> !field.canPut(originalPiece))
+                            .collect(Collectors.toList());
+
+                    enumMap.put(piece, piecesList);
+                }
+
+                maps.put(1L << (x + dy * 10), enumMap);
+            }
+        }
+        return maps;
     }
 }
 
