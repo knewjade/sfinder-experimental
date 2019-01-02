@@ -2,6 +2,7 @@ package line.step1;
 
 import core.mino.Piece;
 import core.neighbor.OriginalPiece;
+import line.commons.FactoryPool;
 
 import java.util.EnumMap;
 import java.util.HashMap;
@@ -12,8 +13,8 @@ import java.util.stream.Stream;
 class Runner {
     private final HashMap<Long, EnumMap<Piece, List<OriginalPiece>>> maps;
 
-    Runner(FactoryPool pool) {
-        this.maps = pool.getBlockMaskMap();
+    Runner(FactoryPool pool, int lineY) {
+        this.maps = pool.getBlockMaskMapBoard1(lineY);
     }
 
     void run(Result lineObj, Consumer<Result> callback) {

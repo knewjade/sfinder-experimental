@@ -9,6 +9,7 @@ import core.mino.Piece;
 import entry.path.output.MyFile;
 import lib.AsyncBufferedFileWriter;
 import line.commons.CountPrinter;
+import line.commons.FactoryPool;
 
 import java.io.IOException;
 
@@ -72,13 +73,13 @@ public class Main {
     private static void run(int maxHeight, Field lineField, String fileName) {
         int lineY = 3;
 
-        FactoryPool factoryPool = new FactoryPool(maxHeight, lineY);
+        FactoryPool factoryPool = new FactoryPool(maxHeight);
 
         PieceCounter allPieceCounter = new PieceCounter(Piece.valueList());
 
         Field initField = FieldFactory.createField(maxHeight);
 
-        Runner runner = new Runner(factoryPool);
+        Runner runner = new Runner(factoryPool, lineY);
         Result result = new EmptyResult(lineField, initField, allPieceCounter, lineY);
 
         CountPrinter countPrinter = new CountPrinter(100000);

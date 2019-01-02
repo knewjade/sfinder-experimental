@@ -1,13 +1,11 @@
 import common.datastore.FullOperationWithKey
 import common.datastore.PieceCounter
-import common.tetfu.common.ColorConverter
 import core.field.Field
 import core.field.FieldFactory
 import core.field.FieldView
 import core.mino.MinoFactory
 import core.mino.MinoShifter
 import core.mino.Piece
-import core.srs.MinoRotation
 import searcher.pack.separable_mino.AllMinoFactory
 import java.util.*
 import java.util.stream.Stream
@@ -15,8 +13,6 @@ import java.util.stream.Stream
 fun main(args: Array<String>) {
     val minoFactory = MinoFactory()
     val minoShifter = MinoShifter()
-    val minoRotation = MinoRotation()
-    val colorConverter = ColorConverter()
 
     val maxHeight = 4
     val factory = AllMinoFactory(minoFactory, minoShifter, 10, maxHeight, 0L)

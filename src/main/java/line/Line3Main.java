@@ -18,6 +18,7 @@ import core.srs.MinoRotation;
 import core.srs.Rotate;
 import entry.path.output.MyFile;
 import lib.AsyncBufferedFileWriter;
+import line.commons.LineCommons;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -28,98 +29,11 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class Line3Main {
-    public static void main(String[] args) throws IOException {
-        {
-            String fileName = "1line";
-            int index = 7;
 
-            System.out.println(fileName + " " + index);
-            System.out.println(Files.lines(Paths.get("output/" + fileName + "_" + index)).count());
 
-            run(fileName + "_" + index);
-        }
 
-        {
-            String fileName = "1line";
-            int index = 6;
-
-            System.out.println(fileName + " " + index);
-            System.out.println(Files.lines(Paths.get("output/" + fileName + "_" + index)).count());
-
-            run(fileName + "_" + index);
-        }
-
-        {
-            String fileName = "1line";
-            int index = 5;
-
-            System.out.println(fileName + " " + index);
-            System.out.println(Files.lines(Paths.get("output/" + fileName + "_" + index)).count());
-
-            run(fileName + "_" + index);
-        }
-
-        {
-            String fileName = "1line";
-            int index = 4;
-
-            System.out.println(fileName + " " + index);
-            System.out.println(Files.lines(Paths.get("output/" + fileName + "_" + index)).count());
-
-            run(fileName + "_" + index);
-        }
-
-        {
-            String fileName = "12line";
-            int index = 7;
-
-            System.out.println(fileName + " " + index);
-            System.out.println(Files.lines(Paths.get("output/" + fileName + "_" + index)).count());
-
-            run(fileName + "_" + index);
-        }
-
-        {
-            String fileName = "12line";
-            int index = 6;
-
-            System.out.println(fileName + " " + index);
-            System.out.println(Files.lines(Paths.get("output/" + fileName + "_" + index)).count());
-
-            run(fileName + "_" + index);
-        }
-    }
-
-    private static void run(String fileName) throws IOException {
-        int maxHeight = 18;
-
-        MinoFactory minoFactory = new MinoFactory();
-        MinoShifter minoShifter = new MinoShifter();
-        MinoRotation minoRotation = new MinoRotation();
-
-        RotateReachable rotateReachable = new RotateReachable(minoFactory, minoShifter, minoRotation, maxHeight);
-        LockedReachable lockedReachable = new LockedReachable(minoFactory, minoShifter, minoRotation, maxHeight);
-
-        SpinChecker spinChecker = new SpinChecker(minoFactory, rotateReachable, lockedReachable, maxHeight);
-        Line3Runner runner = new Line3Runner(minoFactory, minoShifter, spinChecker, maxHeight);
-
-        AtomicInteger counter = new AtomicInteger();
-
-        try (AsyncBufferedFileWriter writer = new MyFile("output/" + fileName + "_next").newAsyncWriter()) {
-            Files.lines(Paths.get("output/" + fileName))
-                    .peek(line -> {
-                        int i = counter.incrementAndGet();
-                        if (i % 10000 == 0) System.out.println(i);
-                    })
-                    .map(OperationInterpreter::parseToOperations)
-                    .flatMap(runner::run)
-                    .forEach(operations -> {
-                        String line = OperationInterpreter.parseToString(operations);
-                        writer.writeAndNewLine(line);
-                    });
-        }
-    }
 }
+/*
 
 class Line3Runner {
     private static final PieceCounter ALL_PIECE_COUNTER = new PieceCounter(Piece.valueList());
@@ -320,3 +234,4 @@ class OriginalPieceWrapper {
         return index;
     }
 }
+*/

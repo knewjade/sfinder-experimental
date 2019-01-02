@@ -16,8 +16,6 @@ import java.util.stream.Collectors
 
 fun main(args: Array<String>) {
     val minoFactory = MinoFactory()
-    val minoShifter = MinoShifter()
-    val minoRotation = MinoRotation()
     val colorConverter = ColorConverter()
 
     val maxHeight = 4

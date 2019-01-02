@@ -17,6 +17,7 @@ import core.mino.MinoShifter;
 import core.mino.Piece;
 import core.srs.MinoRotation;
 import entry.path.output.OneFumenParser;
+import line.commons.LineCommons;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -26,6 +27,7 @@ import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
+/*
 public class Line4Main {
     public static void main(String[] args) throws IOException {
         {
@@ -90,70 +92,4 @@ public class Line4Main {
                 });
     }
 }
-
-class SpinChecker {
-    private final MinoFactory minoFactory;
-    private final int maxHeight;
-    private final RotateReachable rotateReachable;
-    private final LockedReachable lockedReachable;
-
-    SpinChecker(MinoFactory minoFactory, RotateReachable rotateReachable, LockedReachable lockedReachable, int maxHeight) {
-        this.minoFactory = minoFactory;
-        this.rotateReachable = rotateReachable;
-        this.lockedReachable = lockedReachable;
-        this.maxHeight = maxHeight;
-    }
-
-    int getMinY(List<? extends Operation> operationsList) {
-        // 最も低いブロックが一番下になるように移動
-        int minY = Integer.MAX_VALUE;
-        for (Operation operation : operationsList) {
-            Mino mino = minoFactory.create(operation.getPiece(), operation.getRotate());
-            int min = operation.getY() + mino.getMinY();
-            if (min < minY) {
-                minY = min;
-            }
-        }
-        return minY;
-    }
-
-    boolean checks(List<? extends Operation> operationsList) {
-        int minY = getMinY(operationsList);
-        return checks(operationsList, minY);
-    }
-
-    private boolean checks(List<? extends Operation> operationsList, int minY) {
-        List<? extends Operation> withoutT = operationsList.stream()
-                .filter(operation -> operation.getPiece() != Piece.T)
-                .collect(Collectors.toList());
-
-        Optional<? extends Operation> optional = operationsList.stream()
-                .filter(operation -> operation.getPiece() == Piece.T)
-                .findFirst();
-        assert optional.isPresent();
-        Operation tOperation = optional.get();
-
-        // T以外の地形
-        Field field = FieldFactory.createField(maxHeight);
-        for (Operation operation : withoutT) {
-            Mino mino = minoFactory.create(operation.getPiece(), operation.getRotate());
-            field.put(mino, operation.getX(), operation.getY() - minY);
-        }
-
-        Mino mino = minoFactory.create(tOperation.getPiece(), tOperation.getRotate());
-        int x = tOperation.getX();
-        int y = tOperation.getY() - minY;
-
-        Field emptyField = FieldFactory.createField(maxHeight);
-        if (!Commons.isTSpin(field, x, y)) {
-            return false;
-        }
-
-        if (!rotateReachable.checks(field, mino, x, y, maxHeight)) {
-            return false;
-        }
-
-        List<MinoOperationWithKey> keysWithoutT = LineCommons.toOperationWithKeys(minoFactory, withoutT, minY);
-        return BuildUp.existsValidBuildPattern(emptyField, keysWithoutT, maxHeight, lockedReachable);
-    }
-}
+*/

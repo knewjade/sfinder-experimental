@@ -6,7 +6,7 @@ import java.util.concurrent.TimeUnit;
 
 public class CountPrinter {
     private final int checkPoint;
-    private final int max;
+    private final long max;
     private final Stopwatch stopwatch;
     private int counter;
 
@@ -14,7 +14,7 @@ public class CountPrinter {
         this(checkPoint, -1);
     }
 
-    public CountPrinter(int checkPoint, int max) {
+    public CountPrinter(int checkPoint, long max) {
         this.checkPoint = checkPoint;
         this.max = max;
         this.stopwatch = Stopwatch.createStartedStopwatch();
