@@ -1,49 +1,67 @@
 package line;
 
-import common.buildup.BuildUp;
-import common.datastore.MinimalOperationWithKey;
-import common.datastore.MinoOperationWithKey;
 import common.datastore.Operation;
 import common.datastore.Operations;
+import common.datastore.PieceCounter;
+import common.datastore.SimpleOperation;
 import common.parser.OperationInterpreter;
-import common.tetfu.common.ColorConverter;
-import commons.Commons;
 import core.action.reachable.LockedReachable;
 import core.action.reachable.RotateReachable;
 import core.field.Field;
-import core.field.FieldFactory;
 import core.mino.Mino;
 import core.mino.MinoFactory;
 import core.mino.MinoShifter;
 import core.mino.Piece;
+import core.neighbor.OriginalPiece;
+import core.neighbor.OriginalPieceFactory;
 import core.srs.MinoRotation;
-import entry.path.output.OneFumenParser;
+import core.srs.Rotate;
+import entry.path.output.MyFile;
+import lib.AsyncBufferedFileWriter;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
-//
 public class Line3Main {
-    static List<MinoOperationWithKey> toOperationWithKeys(MinoFactory minoFactory, List<? extends Operation> operations, int minY) {
-        return operations.stream()
-                .map(operation -> {
-                    Mino mino = minoFactory.create(operation.getPiece(), operation.getRotate());
-                    int operationX = operation.getX();
-                    int operationY = operation.getY() - minY;
-                    return new MinimalOperationWithKey(mino, operationX, operationY, 0L);
-                })
-                .collect(Collectors.toList());
-    }
-
     public static void main(String[] args) throws IOException {
         {
             String fileName = "1line";
             int index = 7;
+
+            System.out.println(fileName + " " + index);
+            System.out.println(Files.lines(Paths.get("output/" + fileName + "_" + index)).count());
+
+            run(fileName + "_" + index);
+        }
+
+        {
+            String fileName = "1line";
+            int index = 6;
+
+            System.out.println(fileName + " " + index);
+            System.out.println(Files.lines(Paths.get("output/" + fileName + "_" + index)).count());
+
+            run(fileName + "_" + index);
+        }
+
+        {
+            String fileName = "1line";
+            int index = 5;
+
+            System.out.println(fileName + " " + index);
+            System.out.println(Files.lines(Paths.get("output/" + fileName + "_" + index)).count());
+
+            run(fileName + "_" + index);
+        }
+
+        {
+            String fileName = "1line";
+            int index = 4;
 
             System.out.println(fileName + " " + index);
             System.out.println(Files.lines(Paths.get("output/" + fileName + "_" + index)).count());
@@ -58,7 +76,7 @@ public class Line3Main {
             System.out.println(fileName + " " + index);
             System.out.println(Files.lines(Paths.get("output/" + fileName + "_" + index)).count());
 
-//            run(fileName + "_" + index);
+            run(fileName + "_" + index);
         }
 
         {
@@ -68,105 +86,237 @@ public class Line3Main {
             System.out.println(fileName + " " + index);
             System.out.println(Files.lines(Paths.get("output/" + fileName + "_" + index)).count());
 
-//            run(fileName + "_" + index);
+            run(fileName + "_" + index);
         }
     }
 
     private static void run(String fileName) throws IOException {
-        int maxHeight = 12;
+        int maxHeight = 18;
 
         MinoFactory minoFactory = new MinoFactory();
         MinoShifter minoShifter = new MinoShifter();
         MinoRotation minoRotation = new MinoRotation();
 
-        ColorConverter colorConverter = new ColorConverter();
-        OneFumenParser parser = new OneFumenParser(minoFactory, colorConverter);
-
         RotateReachable rotateReachable = new RotateReachable(minoFactory, minoShifter, minoRotation, maxHeight);
         LockedReachable lockedReachable = new LockedReachable(minoFactory, minoShifter, minoRotation, maxHeight);
 
-        Field emptyField = FieldFactory.createField(maxHeight);
-
         SpinChecker spinChecker = new SpinChecker(minoFactory, rotateReachable, lockedReachable, maxHeight);
+        Line3Runner runner = new Line3Runner(minoFactory, minoShifter, spinChecker, maxHeight);
 
         AtomicInteger counter = new AtomicInteger();
-        Files.lines(Paths.get("output/" + fileName))
-                .map(OperationInterpreter::parseToOperations)
-                .map(Operations::getOperations)
-                .filter(spinChecker::checks)
-                .forEach(operations -> {
-                    int minY = spinChecker.getMinY(operations);
-                    List<MinoOperationWithKey> keys = Line3Main.toOperationWithKeys(minoFactory, operations, minY);
-                    String parse = parser.parse(keys, emptyField, maxHeight);
-                    int count = counter.incrementAndGet();
-                    System.out.println(count + ": http://fumen.zui.jp/?v115@" + parse);
-                });
+
+        try (AsyncBufferedFileWriter writer = new MyFile("output/" + fileName + "_next").newAsyncWriter()) {
+            Files.lines(Paths.get("output/" + fileName))
+                    .peek(line -> {
+                        int i = counter.incrementAndGet();
+                        if (i % 10000 == 0) System.out.println(i);
+                    })
+                    .map(OperationInterpreter::parseToOperations)
+                    .flatMap(runner::run)
+                    .forEach(operations -> {
+                        String line = OperationInterpreter.parseToString(operations);
+                        writer.writeAndNewLine(line);
+                    });
+        }
     }
 }
 
-class SpinChecker {
+class Line3Runner {
+    private static final PieceCounter ALL_PIECE_COUNTER = new PieceCounter(Piece.valueList());
+
     private final MinoFactory minoFactory;
+    private final SpinChecker spinChecker;
     private final int maxHeight;
-    private final RotateReachable rotateReachable;
-    private final LockedReachable lockedReachable;
+    private final List<OriginalPieceWrapper> allPieces;
+    private final EnumMap<Piece, PieceCounter> pieceCounters;
 
-    SpinChecker(MinoFactory minoFactory, RotateReachable rotateReachable, LockedReachable lockedReachable, int maxHeight) {
+    Line3Runner(MinoFactory minoFactory, MinoShifter minoShifter, SpinChecker spinChecker, int maxHeight) {
         this.minoFactory = minoFactory;
-        this.rotateReachable = rotateReachable;
-        this.lockedReachable = lockedReachable;
+        this.spinChecker = spinChecker;
         this.maxHeight = maxHeight;
-    }
 
-    int getMinY(List<? extends Operation> operationsList) {
-        // 最も低いブロックが一番下になるように移動
-        int minY = Integer.MAX_VALUE;
-        for (Operation operation : operationsList) {
-            Mino mino = minoFactory.create(operation.getPiece(), operation.getRotate());
-            int min = operation.getY() + mino.getMinY();
-            if (min < minY) {
-                minY = min;
+        OriginalPieceFactory pieceFactory = new OriginalPieceFactory(maxHeight);
+        this.allPieces = new ArrayList<>();
+        int index = 0;
+        for (OriginalPiece originalPiece : pieceFactory.create()) {
+            Set<Rotate> uniqueRotates = minoShifter.getUniqueRotates(originalPiece.getPiece());
+            if (!uniqueRotates.contains(originalPiece.getRotate())) {
+                continue;
             }
+            allPieces.add(new OriginalPieceWrapper(originalPiece, index));
+            index += 1;
         }
-        return minY;
+
+        EnumMap<Piece, PieceCounter> pieceCounters = new EnumMap<>(Piece.class);
+        for (Piece piece : Piece.valueList()) {
+            pieceCounters.put(piece, new PieceCounter(Stream.of(piece)));
+        }
+        this.pieceCounters = pieceCounters;
     }
 
-    boolean checks(List<? extends Operation> operationsList) {
-        int minY = getMinY(operationsList);
-        return checks(operationsList, minY);
+    public Stream<Operations> run(Operations operations) {
+        boolean exists = existsAllOnGround(operations.getOperations());
+        if (exists) {
+            return Stream.of(operations);
+        }
+
+        // 使用していないミノ
+        PieceCounter usingPieceCounter = new PieceCounter(operations.getOperations().stream().map(Operation::getPiece));
+        PieceCounter restPieceCounter = ALL_PIECE_COUNTER.removeAndReturnNew(usingPieceCounter);
+
+        if (restPieceCounter.getCounter() == 0L) {
+            return Stream.empty();
+        }
+
+        return this.run(operations, restPieceCounter);
     }
 
-    private boolean checks(List<? extends Operation> operationsList, int minY) {
-        List<? extends Operation> withoutT = operationsList.stream()
-                .filter(operation -> operation.getPiece() != Piece.T)
+    private boolean existsAllOnGround(List<? extends Operation> operationList) {
+        int minY = spinChecker.getMinY(operationList);
+
+        List<Operation> slideOperations = operationList.stream()
+                .map(op -> new SimpleOperation(op.getPiece(), op.getRotate(), op.getX(), op.getY() - minY))
                 .collect(Collectors.toList());
 
-        Optional<? extends Operation> optional = operationsList.stream()
-                .filter(operation -> operation.getPiece() == Piece.T)
-                .findFirst();
-        assert optional.isPresent();
-        Operation tOperation = optional.get();
+        List<Operation> slideOperationsWithoutT = operationList.stream()
+                .filter(operation -> operation.getPiece() != Piece.T)
+                .map(op -> new SimpleOperation(op.getPiece(), op.getRotate(), op.getX(), op.getY() - minY))
+                .collect(Collectors.toList());
 
-        // T以外の地形
-        Field field = FieldFactory.createField(maxHeight);
-        for (Operation operation : withoutT) {
-            Mino mino = minoFactory.create(operation.getPiece(), operation.getRotate());
-            field.put(mino, operation.getX(), operation.getY() - minY);
+        Field field = LineCommons.toField(minoFactory, slideOperationsWithoutT, maxHeight);
+        return slideOperations.stream()
+                .allMatch(operation -> {
+                    Field freeze = field.freeze();
+                    Mino mino = minoFactory.create(operation.getPiece(), operation.getRotate());
+                    int x = operation.getX();
+                    int y = operation.getY();
+                    freeze.remove(mino, x, y);
+                    return freeze.isOnGround(mino, x, y);
+                });
+    }
+
+    private Stream<Operations> run(Operations operations, PieceCounter restPieceCounter) {
+        List<? extends Operation> operationList = operations.getOperations();
+        Field field = LineCommons.toField(minoFactory, operationList, maxHeight);
+
+        // 最も低いところがy=12になるようにスライドする
+        int lowerY = field.getLowerY();
+        if (lowerY < 12) {
+            int slide = 12 - lowerY;
+            operationList = operationList.stream()
+                    .map(operation -> new SimpleOperation(operation.getPiece(), operation.getRotate(), operation.getX(), operation.getY() + slide))
+                    .collect(Collectors.toList());
         }
 
-        Mino mino = minoFactory.create(tOperation.getPiece(), tOperation.getRotate());
-        int x = tOperation.getX();
-        int y = tOperation.getY() - minY;
+        Field freeze = LineCommons.toField(minoFactory, operationList, maxHeight);
 
-        Field emptyField = FieldFactory.createField(maxHeight);
-        if (!Commons.isTSpin(field, x, y)) {
-            return false;
+        return run2(
+                new LinkedList<>(operationList), restPieceCounter, freeze, 0, new LinkedList<>(), new HashSet<>()
+        );
+    }
+
+    private Stream<Operations> run2(
+            LinkedList<Operation> operations, PieceCounter restPieceCounter, Field field, int startIndex,
+            LinkedList<OriginalPieceWrapper> added, Set<Set<Integer>> sets
+    ) {
+        Stream.Builder<Integer> candidates = Stream.builder();
+        Stream.Builder<Operations> results = Stream.builder();
+
+        PIECE_LOOP:
+        for (int index = startIndex; index < allPieces.size(); index++) {
+            OriginalPieceWrapper wrapper = allPieces.get(index);
+            OriginalPiece originalPiece = wrapper.getPiece();
+            PieceCounter pieceCounter = pieceCounters.get(originalPiece.getPiece());
+            int keyIndex = wrapper.getIndex();
+
+            // そのミノが既に使われている
+            if (!restPieceCounter.containsAll(pieceCounter)) {
+                continue;
+            }
+
+            // フィールドに置くスペースがない
+            if (!field.canPut(originalPiece)) {
+                continue;
+            }
+
+            // 部分的な組み合わせに既に解が見つかっている
+            Set<Integer> keySet = added.stream().map(OriginalPieceWrapper::getIndex).collect(Collectors.toSet());
+            keySet.add(keyIndex);
+
+            for (OriginalPieceWrapper w : added) {
+                keySet.remove(w.getIndex());
+
+                if (sets.contains(keySet)) {
+                    continue PIECE_LOOP;
+                }
+
+                keySet.add(w.getIndex());
+            }
+
+            keySet.remove(keyIndex);
+
+            // 解であるか
+            operations.addLast(originalPiece);
+            boolean exists = existsAllOnGround(operations);
+            if (exists) {
+                HashSet<Integer> newSets = new HashSet<>(keySet);
+                newSets.add(keyIndex);
+                sets.add(newSets);
+                results.accept(new Operations(operations.stream()));
+                operations.removeLast();
+                continue;
+            }
+            operations.removeLast();
+
+            // まだ未使用のミノが残っている
+            PieceCounter nextPieceCounter = restPieceCounter.removeAndReturnNew(pieceCounter);
+            if (nextPieceCounter.getCounter() != 0L) {
+                candidates.accept(index);
+            }
         }
 
-        if (!rotateReachable.checks(field, mino, x, y, maxHeight)) {
-            return false;
-        }
+        Stream<Operations> nextResults = candidates.build().sequential()
+                .flatMap(index -> {
+                    OriginalPieceWrapper wrapper = allPieces.get(index);
+                    OriginalPiece originalPiece = wrapper.getPiece();
+                    PieceCounter pieceCounter = pieceCounters.get(originalPiece.getPiece());
 
-        List<MinoOperationWithKey> keysWithoutT = Line3Main.toOperationWithKeys(minoFactory, withoutT, minY);
-        return BuildUp.existsValidBuildPattern(emptyField, keysWithoutT, maxHeight, lockedReachable);
+                    Field freeze = field.freeze();
+                    freeze.put(originalPiece);
+
+                    PieceCounter nextPieceCounter = restPieceCounter.removeAndReturnNew(pieceCounter);
+                    operations.addLast(originalPiece);
+                    added.addLast(wrapper);
+
+                    Stream<Operations> stream = run2(
+                            operations, nextPieceCounter, freeze, index + 1,
+                            added, sets
+                    );
+
+                    operations.removeLast();
+                    added.removeLast();
+
+                    return stream;
+                });
+
+        return Stream.concat(results.build(), nextResults);
+    }
+}
+
+class OriginalPieceWrapper {
+    private final OriginalPiece piece;
+    private final int index;
+
+    OriginalPieceWrapper(OriginalPiece piece, int index) {
+        this.piece = piece;
+        this.index = index;
+    }
+
+    OriginalPiece getPiece() {
+        return piece;
+    }
+
+    int getIndex() {
+        return index;
     }
 }

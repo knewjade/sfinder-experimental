@@ -25,6 +25,7 @@ import java.util.stream.Stream;
 
 // 1ラインを埋めるミノの組み合わせを列挙
 // y=3が揃っている状態
+// ミノが空中に浮いている可能性あり
 public class LineMain {
     public static final int LINE_Y = 3;
 

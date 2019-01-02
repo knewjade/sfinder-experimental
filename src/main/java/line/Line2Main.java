@@ -31,6 +31,7 @@ import java.util.stream.Stream;
 // ライン消去にTが使われる解だけを抽出する
 // すべての行にTがかかっている解だけを抽出する
 // y=5が揃っている状態
+// ミノが空中に浮いている可能性あり
 public class Line2Main {
     public static void main(String[] args) throws IOException {
         {
@@ -220,15 +221,6 @@ class Line2Obj {
         return localSearch(operationList, operationT, fieldWithoutT);
     }
 
-    private Field toField(List<? extends Operation> operationList) {
-        Field field = FieldFactory.createField(maxHeight);
-        for (Operation operation : operationList) {
-            Mino mino = minoFactory.create(operation.getPiece(), operation.getRotate());
-            field.put(mino, operation.getX(), operation.getY());
-        }
-        return field;
-    }
-
     private Field toFieldWithoutT(List<? extends Operation> operationList) {
         Field field = FieldFactory.createField(maxHeight);
         for (Operation operation : operationList) {
@@ -260,7 +252,7 @@ class Line2Obj {
 
                     assert !needBlock.isPerfect();
 
-                    Field field = toField(operationList);
+                    Field field = LineCommons.toField(minoFactory, operationList, maxHeight);
                     return this.next(operationList, restPieceCounter, field, needBlock);
                 });
     }
