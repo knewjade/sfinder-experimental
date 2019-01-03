@@ -1,4 +1,4 @@
-package line.step2;
+package line.commons;
 
 import entry.path.output.MyFile;
 import lib.AsyncBufferedFileWriter;
@@ -6,16 +6,16 @@ import lib.AsyncBufferedFileWriter;
 import java.io.IOException;
 import java.util.HashMap;
 
-class Writers {
+public class Writers {
     private final HashMap<Integer, AsyncBufferedFileWriter> writersMap;
     private final String fileName;
 
-    Writers(String fileName) {
+    public Writers(String fileName) {
         this.fileName = fileName;
         this.writersMap = new HashMap<>();
     }
 
-    synchronized void writeAndNewLine(int index, String line) {
+    public synchronized void writeAndNewLine(int index, String line) {
         if (!writersMap.containsKey(index)) {
             String outputFileName = fileName + "_" + index;
             AsyncBufferedFileWriter writer = create(outputFileName);
@@ -35,7 +35,7 @@ class Writers {
         }
     }
 
-    void close() throws IOException {
+    public void close() throws IOException {
         for (AsyncBufferedFileWriter writer : writersMap.values()) {
             writer.flush();
             writer.close();

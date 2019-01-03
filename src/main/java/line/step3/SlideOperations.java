@@ -2,6 +2,7 @@ package line.step3;
 
 import common.datastore.Operation;
 import common.datastore.PieceCounter;
+import line.commons.KeyOriginalPiece;
 
 import java.util.List;
 

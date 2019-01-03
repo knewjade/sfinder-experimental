@@ -5,6 +5,7 @@ import common.datastore.Pair;
 import core.field.Field;
 import core.neighbor.OriginalPiece;
 import line.commons.FactoryPool;
+import line.commons.KeyOriginalPiece;
 import line.commons.LineCommons;
 
 import java.util.ArrayList;

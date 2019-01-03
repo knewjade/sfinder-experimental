@@ -1,39 +1,39 @@
-package line.step3;
+package line.commons;
 
 import core.mino.Piece;
 import core.neighbor.OriginalPiece;
 import core.srs.Rotate;
 
-class KeyOriginalPiece {
+public class KeyOriginalPiece {
     private final OriginalPiece originalPiece;
     private final int index;
 
-    KeyOriginalPiece(OriginalPiece originalPiece, int index) {
+    public KeyOriginalPiece(OriginalPiece originalPiece, int index) {
         this.originalPiece = originalPiece;
         this.index = index;
     }
 
-    Piece getPiece() {
+    public Piece getPiece() {
         return originalPiece.getPiece();
     }
 
-    Rotate getRotate() {
+    public Rotate getRotate() {
         return originalPiece.getRotate();
     }
 
-    int getX() {
+    public int getX() {
         return originalPiece.getX();
     }
 
-    int getY() {
+    public int getY() {
         return originalPiece.getY();
     }
 
-    int getIndex() {
+    public int getIndex() {
         return index;
     }
 
-    OriginalPiece getOriginalPiece() {
+    public OriginalPiece getOriginalPiece() {
         return originalPiece;
     }
 }

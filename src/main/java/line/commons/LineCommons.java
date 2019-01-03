@@ -1,6 +1,7 @@
 package line.commons;
 
 import common.datastore.*;
+import commons.Commons;
 import core.field.Field;
 import core.field.FieldFactory;
 import core.mino.Mino;
@@ -102,5 +103,31 @@ public class LineCommons {
 
     public static String toURL(String data) {
         return "http://fumen.zui.jp/?v115@" + data;
+    }
+
+    public static PieceCounter toPieceCounter(List<? extends Operation> operations) {
+        return new PieceCounter(operations.stream().map(Operation::getPiece));
+    }
+
+    public static boolean existsAllOnGround(MinoFactory minoFactory, List<Operation> slideOperationList, int maxHeight) {
+        List<Operation> slideOperationsWithoutT = slideOperationList.stream()
+                .filter(operation -> operation.getPiece() != Piece.T)
+                .collect(Collectors.toList());
+
+        Field field = LineCommons.toField(minoFactory, slideOperationsWithoutT, maxHeight);
+
+        return slideOperationList.stream()
+                .allMatch(operation -> {
+                    Field freeze = field.freeze();
+                    Mino mino = minoFactory.create(operation.getPiece(), operation.getRotate());
+                    int x = operation.getX();
+                    int y = operation.getY();
+                    freeze.remove(mino, x, y);
+                    return freeze.isOnGround(mino, x, y);
+                });
+    }
+
+    public static boolean isTSpin(Field field, int x, int y) {
+        return Commons.isTSpin(field, x, y);
     }
 }

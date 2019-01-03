@@ -3,7 +3,6 @@ package line.step2;
 import common.datastore.Operation;
 import common.datastore.Operations;
 import common.datastore.PieceCounter;
-import commons.Commons;
 import core.field.Field;
 import core.mino.MinoFactory;
 import core.mino.Piece;
@@ -59,7 +58,7 @@ class Runner {
         Operation operationT = optional.get();
 
         // Tミノが入れば、Tスピンになる
-        if (Commons.isTSpin(fieldWithoutT, operationT.getX(), operationT.getY())) {
+        if (LineCommons.isTSpin(fieldWithoutT, operationT.getX(), operationT.getY())) {
             // 解
             return Stream.of(new Operations(operationList));
         }

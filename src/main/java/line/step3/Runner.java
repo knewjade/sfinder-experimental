@@ -8,6 +8,7 @@ import core.mino.MinoFactory;
 import core.mino.Piece;
 import core.srs.Rotate;
 import line.commons.FactoryPool;
+import line.commons.KeyOriginalPiece;
 import line.commons.LineCommons;
 
 import java.util.EnumMap;
@@ -51,22 +52,7 @@ class Runner {
     // すべてのミノが地面 or 他のミノの上にあるか
     private boolean existsAllOnGround(SlideOperations operations) {
         List<Operation> slideOperationList = operations.getGroundSlideOperationList();
-
-        List<Operation> slideOperationsWithoutT = slideOperationList.stream()
-                .filter(operation -> operation.getPiece() != Piece.T)
-                .collect(Collectors.toList());
-
-        Field field = LineCommons.toField(minoFactory, slideOperationsWithoutT, maxHeight);
-
-        return slideOperationList.stream()
-                .allMatch(operation -> {
-                    Field freeze = field.freeze();
-                    Mino mino = minoFactory.create(operation.getPiece(), operation.getRotate());
-                    int x = operation.getX();
-                    int y = operation.getY();
-                    freeze.remove(mino, x, y);
-                    return freeze.isOnGround(mino, x, y);
-                });
+        return LineCommons.existsAllOnGround(minoFactory, slideOperationList, maxHeight);
     }
 
     // 空中に浮いてミノの下にミノを置いて探索

@@ -3,6 +3,7 @@ package line.step3;
 import common.datastore.Operation;
 import common.datastore.PieceCounter;
 import core.mino.MinoFactory;
+import line.commons.KeyOriginalPiece;
 import line.commons.LineCommons;
 
 import java.util.ArrayList;

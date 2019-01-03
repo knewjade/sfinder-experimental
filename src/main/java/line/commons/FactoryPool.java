@@ -1,5 +1,7 @@
 package line.commons;
 
+import commons.RotateReachableThreadLocal;
+import concurrent.LockedReachableThreadLocal;
 import core.action.reachable.LockedReachable;
 import core.action.reachable.RotateReachable;
 import core.field.Field;
@@ -20,12 +22,16 @@ public class FactoryPool {
     private final MinoFactory minoFactory;
     private final MinoShifter minoShifter;
     private final MinoRotation minoRotation;
+    private final LockedReachableThreadLocal lockedReachableThreadLocal;
+    private final RotateReachableThreadLocal rotateReachableThreadLocal;
 
     public FactoryPool(int maxHeight) {
         this.maxHeight = maxHeight;
         this.minoFactory = new MinoFactory();
         this.minoShifter = new MinoShifter();
         this.minoRotation = new MinoRotation();
+        this.lockedReachableThreadLocal = new LockedReachableThreadLocal(minoFactory, minoShifter, minoRotation, maxHeight);
+        this.rotateReachableThreadLocal = new RotateReachableThreadLocal(minoFactory, minoShifter, minoRotation, maxHeight);
     }
 
     public int getMaxHeight() {
@@ -41,11 +47,11 @@ public class FactoryPool {
     }
 
     public RotateReachable createRotateReachable() {
-        return new RotateReachable(minoFactory, minoShifter, minoRotation, maxHeight);
+        return rotateReachableThreadLocal.get();
     }
 
     public LockedReachable createLockedReachable() {
-        return new LockedReachable(minoFactory, minoShifter, minoRotation, maxHeight);
+        return lockedReachableThreadLocal.get();
     }
 
     // 指定したブロックを埋めるすべてのミノを取得する
@@ -171,5 +177,9 @@ public class FactoryPool {
         }
 
         return maps;
+    }
+
+    public MinoRotation getMinoRotation() {
+        return minoRotation;
     }
 }

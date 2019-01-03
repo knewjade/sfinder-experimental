@@ -21,7 +21,7 @@ public class Main {
 
             System.out.println(fileName + " " + index);
 
-//            run(fileName + "_" + index);
+            run(fileName + "_" + index);
         }
 
         {
@@ -30,7 +30,7 @@ public class Main {
 
             System.out.println(fileName + " " + index);
 
-//            run(fileName + "_" + index);
+            run(fileName + "_" + index);
         }
 
         {
@@ -48,7 +48,7 @@ public class Main {
 
             System.out.println(fileName + " " + index);
 
-//            run(fileName + "_" + index);
+            run(fileName + "_" + index);
         }
 
         {
@@ -57,7 +57,7 @@ public class Main {
 
             System.out.println(fileName + " " + index);
 
-//            run(fileName + "_" + index);
+            run(fileName + "_" + index);
         }
 
         {
@@ -66,7 +66,7 @@ public class Main {
 
             System.out.println(fileName + " " + index);
 
-//            run(fileName + "_" + index);
+            run(fileName + "_" + index);
         }
     }
 
