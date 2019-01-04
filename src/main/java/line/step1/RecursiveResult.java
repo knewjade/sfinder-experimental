@@ -11,6 +11,7 @@ public class RecursiveResult implements Result {
     private final int lineY;
     private final Field left;
     private final Field field;
+    private final int clearedLine;
     private final PieceCounter pieceCounter;
     private final OriginalPiece piece;
 
@@ -28,18 +29,19 @@ public class RecursiveResult implements Result {
 
         this.left = freezeLeft;
         this.field = freezeField;
+        this.clearedLine = freezeField.freeze().clearLine();
         this.piece = piece;
         this.pieceCounter = pieceCounter.removeAndReturnNew(new PieceCounter(Stream.of(piece.getPiece())));
     }
 
     @Override
-    public boolean isSolution() {
-        return left.isPerfect();
+    public boolean isSolution(int maxClearedLine) {
+        return left.isPerfect() && clearedLine == maxClearedLine;
     }
 
     @Override
-    public boolean isCandidate() {
-        return pieceCounter.getCounter() != 0L;
+    public boolean isCandidate(int maxClearedLine) {
+        return pieceCounter.getCounter() != 0L && clearedLine < maxClearedLine;
     }
 
     @Override

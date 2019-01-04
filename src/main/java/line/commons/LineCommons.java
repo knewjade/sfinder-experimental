@@ -130,4 +130,13 @@ public class LineCommons {
     public static boolean isTSpin(Field field, int x, int y) {
         return Commons.isTSpin(field, x, y);
     }
+
+    public static int getMaxY(Field field) {
+        for (int y = field.getMaxFieldHeight() - 1; 0 <= y; y -= 1) {
+            if (field.getBlockCountOnY(y) != 0) {
+                return y;
+            }
+        }
+        return -1;
+    }
 }

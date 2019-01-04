@@ -13,13 +13,14 @@ import line.commons.FactoryPool;
 
 import java.io.IOException;
 
-// 1ラインを埋めるミノの組み合わせを列挙
+// nラインを埋めるミノの組み合わせを列挙
 // y=3が揃っている状態
 // ミノが空中に浮いている可能性あり
 public class Main {
     public static void main(String[] args) {
         {
             int maxHeight = 7;
+            int clearedLine = 1;
             Field lineField = FieldFactory.createField("" +
                     "__________" +
                     "__________" +
@@ -32,11 +33,12 @@ public class Main {
             String fileName = "1line";
 
             System.out.println(fileName);
-            run(maxHeight, lineField, fileName);
+            run(maxHeight, lineField, clearedLine, fileName);
         }
 
         {
             int maxHeight = 8;
+            int clearedLine = 2;
             Field lineField = FieldFactory.createField("" +
                     "__________" +
                     "__________" +
@@ -49,11 +51,12 @@ public class Main {
             String fileName = "12line";
 
             System.out.println(fileName);
-            run(maxHeight, lineField, fileName);
+            run(maxHeight, lineField, clearedLine, fileName);
         }
 
         {
             int maxHeight = 9;
+            int clearedLine = 2;
             Field lineField = FieldFactory.createField("" +
                     "__________" +
                     "XXXXXXXXXX" +
@@ -70,7 +73,7 @@ public class Main {
         }
     }
 
-    private static void run(int maxHeight, Field lineField, String fileName) {
+    private static void run(int maxHeight, Field lineField, int clearedLine, String fileName) {
         int lineY = 3;
 
         FactoryPool factoryPool = new FactoryPool(maxHeight);
@@ -79,7 +82,7 @@ public class Main {
 
         Field initField = FieldFactory.createField(maxHeight);
 
-        Runner runner = new Runner(factoryPool, lineY);
+        Runner runner = new Runner(factoryPool, clearedLine, lineY);
         Result result = new EmptyResult(lineField, initField, allPieceCounter, lineY);
 
         CountPrinter countPrinter = new CountPrinter(100000);

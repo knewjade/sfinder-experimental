@@ -14,6 +14,7 @@ import core.mino.Piece;
 import line.commons.FactoryPool;
 import line.commons.LineCommons;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.OptionalInt;
@@ -101,6 +102,28 @@ public class Runner {
 
         // Tミノが回転入れできる
         RotateReachable rotateReachable = factoryPool.createRotateReachable();
-        return rotateReachable.checks(fieldWithoutT, tMino, tx, ty, maxHeight);
+        if (!rotateReachable.checks(fieldWithoutT, tMino, tx, ty, maxHeight)) {
+            return false;
+        }
+
+        // Tミノ以外は1ミノ抜くと組むことができない or ライン消去がなくなる
+        int clearLine = LineCommons.toField(minoFactory, operations, maxHeight).clearLine();
+        for (int index = 0; index < keysWithoutT.size(); index++) {
+            MinoOperationWithKey key = keysWithoutT.get(index);
+            if (key.getPiece() == Piece.T) {
+                continue;
+            }
+
+            List<MinoOperationWithKey> operationWithKeys = new ArrayList<>(keysWithoutT);
+            operationWithKeys.remove(index);
+
+            Field field = LineCommons.toField(minoFactory, operationWithKeys, maxHeight);
+
+            if (field.clearLine() == clearLine && BuildUp.existsValidBuildPattern(FieldFactory.createField(maxHeight), operationWithKeys, maxHeight, lockedReachable)) {
+                return false;
+            }
+        }
+
+        return true;
     }
 }

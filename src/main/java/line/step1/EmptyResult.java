@@ -9,6 +9,7 @@ import java.util.stream.Stream;
 public class EmptyResult implements Result {
     private final Field left;
     private final Field field;
+    private final int clearedLine;
     private final PieceCounter pieceCounter;
     private final int lineY;
 
@@ -17,17 +18,18 @@ public class EmptyResult implements Result {
         assert left.getBoardCount() == 1;
         this.left = left;
         this.field = field;
+        this.clearedLine = field.freeze().clearLine();
         this.pieceCounter = pieceCounter;
     }
 
     @Override
-    public boolean isSolution() {
-        return left.isPerfect();
+    public boolean isSolution(int maxClearedLine) {
+        return left.isPerfect() && clearedLine == maxClearedLine;
     }
 
     @Override
-    public boolean isCandidate() {
-        return pieceCounter.getCounter() != 0L;
+    public boolean isCandidate(int maxClearedLine) {
+        return pieceCounter.getCounter() != 0L && clearedLine < maxClearedLine;
     }
 
     @Override

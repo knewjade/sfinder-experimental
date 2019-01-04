@@ -11,7 +11,6 @@ import java.util.List;
 
 public class RecursiveSlideOperations implements SlideOperations {
     private final List<? extends Operation> operationList;
-    private final KeyOriginalPiece keyOriginalPiece;
     private final int minY;
 
     // 最も低いブロックがy=4になるように調整
@@ -20,7 +19,6 @@ public class RecursiveSlideOperations implements SlideOperations {
         operations.add(keyOriginalPiece.getOriginalPiece());
         this.operationList = operations;
 
-        this.keyOriginalPiece = keyOriginalPiece;
         this.minY = LineCommons.getMinY(minoFactory, operations);
     }
 
@@ -40,7 +38,7 @@ public class RecursiveSlideOperations implements SlideOperations {
     }
 
     @Override
-    public KeyOriginalPiece getKeyOriginalPiece() {
-        return keyOriginalPiece;
+    public List<Operation> getRawOprationList() {
+        return new ArrayList<>(operationList);
     }
 }

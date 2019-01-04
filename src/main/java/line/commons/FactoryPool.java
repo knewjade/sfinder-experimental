@@ -15,6 +15,7 @@ import core.srs.MinoRotation;
 import core.srs.Rotate;
 
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 public class FactoryPool {
@@ -99,27 +100,32 @@ public class FactoryPool {
     // 指定したブロックを埋めるすべてのミノを取得する
     // Long=埋めたい1ブロック -> Piece=置くミノの種類 -> List=指定したブロックを埋めるミノ一覧
     // フィールドの高さは12まで
-    public HashMap<Long, HashMap<Long, EnumMap<Piece, List<OriginalPiece>>>> getBlockMaskMapBoard2() {
-        HashMap<Long, HashMap<Long, EnumMap<Piece, List<OriginalPiece>>>> maps = new HashMap<>();
+    public HashMap<Long, HashMap<Long, EnumMap<Piece, List<KeyOriginalPiece>>>> getBlockMaskMapBoard2() {
+        HashMap<Long, HashMap<Long, EnumMap<Piece, List<KeyOriginalPiece>>>> maps = new HashMap<>();
 
-        List<OriginalPiece> uniqueOriginalPieces = createUniqueOriginalPieces();
+        AtomicInteger counter = new AtomicInteger();
+        List<KeyOriginalPiece> uniqueOriginalPieces = createUniqueOriginalPieces().stream()
+                .map(originalPiece -> new KeyOriginalPiece(originalPiece, counter.incrementAndGet()))
+                .collect(Collectors.toList());
 
         for (int y = 0; y < 9; y++) {
             for (int x = 0; x < 10; x++) {
                 Field field = FieldFactory.createMiddleField();
                 field.setBlock(x, y);
 
-                EnumMap<Piece, List<OriginalPiece>> enumMap = new EnumMap<>(Piece.class);
+                EnumMap<Piece, List<KeyOriginalPiece>> enumMap = new EnumMap<>(Piece.class);
                 for (Piece piece : Piece.valueList()) {
-                    List<OriginalPiece> piecesList = uniqueOriginalPieces.stream()
+                    List<KeyOriginalPiece> piecesList = uniqueOriginalPieces.stream()
                             .filter(originalPiece -> originalPiece.getPiece() == piece)
-                            .filter(originalPiece -> !field.canPut(originalPiece))
+                            .filter(originalPiece -> !field.canPut(originalPiece.getOriginalPiece()))
                             .collect(Collectors.toList());
 
                     enumMap.put(piece, piecesList);
                 }
 
-                HashMap<Long, EnumMap<Piece, List<OriginalPiece>>> secondsMap = maps.computeIfAbsent(field.getBoard(0), (ignore) -> new HashMap<>());
+                HashMap<Long, EnumMap<Piece, List<KeyOriginalPiece>>> secondsMap = maps.computeIfAbsent(
+                        field.getBoard(0), (ignore) -> new HashMap<>()
+                );
                 secondsMap.put(field.getBoard(1), enumMap);
             }
         }
@@ -128,15 +134,16 @@ public class FactoryPool {
     }
 
     // Tスピンとして判定されるのに必要なブロックを取得
-    public HashMap<Integer, List<Field>> getTSpinMaskFields(int maxHeight) {
-        HashMap<Integer, List<Field>> maps = new HashMap<>();
+    public HashMap<Integer, List<MaskField>> getTSpinMaskFields(int maxHeight) {
+        HashMap<Integer, List<MaskField>> maps = new HashMap<>();
 
         List<Integer> diff = Arrays.asList(-1, 1);
 
         for (int y = 0; y < maxHeight; y++) {
             for (int x = 0; x < 10; x++) {
-                ArrayList<Field> fields = new ArrayList<>();
+                ArrayList<MaskField> fields = new ArrayList<>();
 
+                // 4隅にブロックをおく
                 Field maskField = FieldFactory.createField(maxHeight);
                 for (int dx : diff) {
                     int cx = x + dx;
@@ -154,6 +161,14 @@ public class FactoryPool {
                     }
                 }
 
+                // 4隅ともブロックで埋めるパターン
+                {
+                    Field need = maskField.freeze();
+                    Field notAllowed = FieldFactory.createField(maxHeight);
+                    fields.add(new MaskField(need, notAllowed));
+                }
+
+                // 1隅ずつブロックを取り除くパターン
                 for (int dx : diff) {
                     int cx = x + dx;
                     if (cx < 0 || 10 <= cx) {
@@ -167,7 +182,12 @@ public class FactoryPool {
                         }
 
                         maskField.removeBlock(cx, cy);
-                        fields.add(maskField.freeze());
+                        Field need = maskField.freeze();
+
+                        Field notAllowed = FieldFactory.createField(maxHeight);
+                        notAllowed.setBlock(cx, cy);
+
+                        fields.add(new MaskField(need, notAllowed));
                         maskField.setBlock(cx, cy);
                     }
                 }

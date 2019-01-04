@@ -3,9 +3,9 @@ package line.step3;
 import common.datastore.Operation;
 import common.datastore.PieceCounter;
 import core.mino.MinoFactory;
-import line.commons.KeyOriginalPiece;
 import line.commons.LineCommons;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class EmptySlideOperations implements SlideOperations {
@@ -13,9 +13,9 @@ public class EmptySlideOperations implements SlideOperations {
     private final int minY;
 
     // 最も低いブロックがy=4になるように調整
-    EmptySlideOperations(MinoFactory minoFactory, List<? extends Operation> operations) {
-        this.operationList = operations;
-        this.minY = LineCommons.getMinY(minoFactory, operationList);
+    EmptySlideOperations(MinoFactory minoFactory, List<? extends Operation> operationList) {
+        this.operationList = operationList;
+        this.minY = LineCommons.getMinY(minoFactory, this.operationList);
     }
 
     @Override
@@ -34,7 +34,7 @@ public class EmptySlideOperations implements SlideOperations {
     }
 
     @Override
-    public KeyOriginalPiece getKeyOriginalPiece() {
-        return null;
+    public List<Operation> getRawOprationList() {
+        return new ArrayList<>(operationList);
     }
 }

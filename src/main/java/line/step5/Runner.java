@@ -12,9 +12,7 @@ import core.mino.Mino;
 import core.mino.MinoFactory;
 import core.mino.Piece;
 import core.neighbor.OriginalPiece;
-import line.commons.FactoryPool;
-import line.commons.KeyOriginalPiece;
-import line.commons.LineCommons;
+import line.commons.*;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -28,6 +26,7 @@ class Runner {
     private final int maxHeight;
     private final FactoryPool factoryPool;
     private final EnumMap<Piece, PieceCounter> allPieceCounters;
+    private final AroundBlocks aroundBlock;
 
     Runner(FactoryPool factoryPool) {
         this.minoFactory = factoryPool.getMinoFactory();
@@ -35,26 +34,22 @@ class Runner {
         this.maxHeight = factoryPool.getMaxHeight();
         this.factoryPool = factoryPool;
         this.allPieceCounters = LineCommons.getAllPieceCounters();
+        this.aroundBlock = new AroundBlocks(maxHeight);
     }
 
     Stream<Operations> run(Operations operations) {
-        List<Operation> operationList = new ArrayList<>(operations.getOperations());
+        Candidate candidate = EmptyCandidate.create(minoFactory, maxHeight, new ArrayList<>(operations.getOperations()));
 
         RotateReachable rotateReachable = factoryPool.createRotateReachable();
-        if (isSolution(operationList, rotateReachable)) {
+        if (isSolution(candidate.getOperationList(), rotateReachable)) {
             return Stream.of(operations);
         }
 
-        Optional<Operation> optional = operationList.stream()
-                .filter(operation -> operation.getPiece() == Piece.T)
-                .findFirst();
+        OperationsWithT operationsWithT = new OperationsWithT(candidate.getOperationList(), minoFactory, maxHeight);
+        Operation tOperation = operationsWithT.getT();
 
-        assert optional.isPresent();
-
-        Operation tOperation = optional.get();
-
-        Field field = LineCommons.toField(minoFactory, operationList, maxHeight);
-        PieceCounter usingPieceCounter = LineCommons.toPieceCounter(operationList);
+        Field field = candidate.newField();
+        PieceCounter usingPieceCounter = candidate.newPieceCounter();
         PieceCounter reminderPieceCounter = ALL_PIECE_COUNTER.removeAndReturnNew(usingPieceCounter);
 
         if (reminderPieceCounter.getCounter() == 0L) {
@@ -62,19 +57,43 @@ class Runner {
         }
 
         List<KeyOriginalPiece> pieces = roofs.getPieces(tOperation, field, reminderPieceCounter);
+        Solutions solutions = new Solutions();
 
-        return search(new ArrayList<>(operationList), pieces, reminderPieceCounter, new HashSet<>(), new HashSet<>());
+        int clearLine = candidate.newField().clearLine();
+
+        PriorityQueue<Candidate> candidates = new PriorityQueue<>(
+                (Comparator.comparingInt(o -> o.getOperationList().size()))
+        );
+        candidates.add(candidate);
+
+        Stream.Builder<Operations> builder = Stream.builder();
+
+        while (!candidates.isEmpty()) {
+            Candidate poll = candidates.poll();
+            List<Candidate> results = search(pieces, poll, solutions, clearLine, builder);
+
+            candidates.addAll(results);
+        }
+
+        return builder.build();
     }
 
-    private Stream<Operations> search(
-            List<Operation> operationList, List<KeyOriginalPiece> pieces, PieceCounter remainderPieceCounter,
-            Set<Integer> currentKeySet, Set<Set<Integer>> solutionKeySet
+    private List<Candidate> search(
+            List<KeyOriginalPiece> pieces, Candidate candidate, Solutions solutions, int clearLine,
+            Stream.Builder<Operations> builder
     ) {
-        Stream.Builder<KeyOriginalPiece> candidates = Stream.builder();
-        Stream.Builder<Operations> results = Stream.builder();
+        List<Candidate> candidates = new ArrayList<>();
 
-        Field field = LineCommons.toField(minoFactory, operationList, maxHeight);
         RotateReachable rotateReachable = factoryPool.createRotateReachable();
+
+        PieceCounter usingPieceCounter = candidate.newPieceCounter();
+        PieceCounter reminderPieceCounter = ALL_PIECE_COUNTER.removeAndReturnNew(usingPieceCounter);
+
+        OperationsWithT operationsWithT = new OperationsWithT(candidate.getOperationList(), minoFactory, maxHeight);
+        Field field = operationsWithT.newField();
+        Operation operationT = operationsWithT.getT();
+
+        Field notAllowedBlock = aroundBlock.get(operationT.getX(), operationT.getY());
 
         for (KeyOriginalPiece keyOriginalPiece : pieces) {
             OriginalPiece originalPiece = keyOriginalPiece.getOriginalPiece();
@@ -84,81 +103,49 @@ class Runner {
                 continue;
             }
 
-            // まだ未使用のミノである
-            PieceCounter currentPieceCounter = allPieceCounters.get(keyOriginalPiece.getPiece());
-            if (!remainderPieceCounter.containsAll(currentPieceCounter)) {
+            // 置いてはいけないスペースではない
+            if (!notAllowedBlock.canPut(originalPiece)) {
                 continue;
             }
 
-            Field freeze = field.freeze();
-            freeze.put(originalPiece);
+            // まだ未使用のミノである
+            PieceCounter currentPieceCounter = allPieceCounters.get(keyOriginalPiece.getPiece());
+            if (!reminderPieceCounter.containsAll(currentPieceCounter)) {
+                continue;
+            }
 
-            List<Operation> operations = new ArrayList<>(operationList);
-            operations.add(originalPiece);
+            RecursiveCandidate nextCandidate = new RecursiveCandidate(candidate, keyOriginalPiece);
 
-            if (isUniqueSolution(operations, keyOriginalPiece, rotateReachable, currentKeySet, solutionKeySet)) {
-                Set<Integer> keySet = new HashSet<>(currentKeySet);
-                keySet.add(keyOriginalPiece.getIndex());
+            // 消去されるライン数が変わらない
+            int nextClearLine = nextCandidate.newField().clearLine();
+            if (nextClearLine != clearLine) {
+                continue;
+            }
 
-                solutionKeySet.add(keySet);
-                results.accept(new Operations(operations));
+            if (isUniqueSolution(candidate, nextCandidate, rotateReachable, solutions)) {
+                solutions.add(nextCandidate);
+                builder.accept(new Operations(nextCandidate.getOperationList()));
             } else {
                 // まだ使用していないミノが残っている
-                PieceCounter nextPieceCounter = remainderPieceCounter.removeAndReturnNew(currentPieceCounter);
+                PieceCounter nextPieceCounter = reminderPieceCounter.removeAndReturnNew(currentPieceCounter);
                 if (nextPieceCounter.getCounter() == 0L) {
                     continue;
                 }
 
-                candidates.accept(keyOriginalPiece);
+                candidates.add(nextCandidate);
             }
         }
 
-        Stream<Operations> stream = candidates.build().sequential()
-                .flatMap(keyOriginalPiece -> {
-                    List<Operation> operations = new ArrayList<>(operationList);
-                    operations.add(keyOriginalPiece.getOriginalPiece());
-
-                    Set<Integer> keySet = new HashSet<>(currentKeySet);
-                    keySet.add(keyOriginalPiece.getIndex());
-
-                    PieceCounter currentPieceCounter = allPieceCounters.get(keyOriginalPiece.getPiece());
-                    PieceCounter nextPieceCounter = remainderPieceCounter.removeAndReturnNew(currentPieceCounter);
-
-                    return search(operations, pieces, nextPieceCounter, keySet, solutionKeySet);
-                });
-
-        return Stream.concat(results.build(), stream);
+        return candidates;
     }
 
-    private boolean isUniqueSolution(
-            List<Operation> operations, KeyOriginalPiece originalPiece, RotateReachable rotateReachable,
-            Set<Integer> currentKeySet, Set<Set<Integer>> solutionKeySet
-    ) {
-        if (!isSolution(operations, rotateReachable)) {
+    private boolean isUniqueSolution(Candidate prevCandidate, RecursiveCandidate nextCandidate, RotateReachable rotateReachable, Solutions solutions) {
+        if (!isSolution(nextCandidate.getOperationList(), rotateReachable)) {
             return false;
         }
-
-        Set<Integer> keySet = new HashSet<>(currentKeySet);
-
-        keySet.add(originalPiece.getIndex());
 
         // 現在の組み合わせでまだ解が見つかっていない
-        if (solutionKeySet.contains(keySet)) {
-            return false;
-        }
-
-        // 部分的な組み合わせでまだ解が見つかっていない
-        for (int prevKey : currentKeySet) {
-            keySet.remove(prevKey);
-
-            if (solutionKeySet.contains(keySet)) {
-                return false;
-            }
-
-            keySet.add(prevKey);
-        }
-
-        return true;
+        return !solutions.partialContains(prevCandidate, nextCandidate.getKeyOriginalPiece());
     }
 
     private boolean isSolution(List<Operation> operations, RotateReachable rotateReachable) {

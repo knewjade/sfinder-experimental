@@ -12,8 +12,10 @@ import java.util.stream.Stream;
 
 class Runner {
     private final HashMap<Long, EnumMap<Piece, List<OriginalPiece>>> maps;
+    private final int clearedLine;
 
-    Runner(FactoryPool pool, int lineY) {
+    Runner(FactoryPool pool, int clearedLine, int lineY) {
+        this.clearedLine = clearedLine;
         this.maps = pool.getBlockMaskMapBoard1(lineY);
     }
 
@@ -24,12 +26,12 @@ class Runner {
     private void run(Stream<Result> stream, Consumer<Result> callback) {
         stream.parallel()
                 .forEach(lineObj -> {
-                    if (lineObj.isSolution()) {
+                    if (lineObj.isSolution(clearedLine)) {
                         callback.accept(lineObj);
                         return;
                     }
 
-                    if (!lineObj.isCandidate()) {
+                    if (!lineObj.isCandidate(clearedLine)) {
                         return;
                     }
 

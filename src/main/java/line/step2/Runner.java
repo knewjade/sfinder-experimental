@@ -6,24 +6,20 @@ import common.datastore.PieceCounter;
 import core.field.Field;
 import core.mino.MinoFactory;
 import core.mino.Piece;
-import core.neighbor.OriginalPiece;
-import line.commons.FactoryPool;
-import line.commons.LineCommons;
+import line.commons.*;
 
-import java.util.*;
+import java.util.EnumMap;
+import java.util.HashMap;
+import java.util.List;
 import java.util.stream.Stream;
 
 class Runner {
-    private static final PieceCounter ALL_PIECE_WITHOUT_T = new PieceCounter(
-            Piece.valueList().stream().filter(piece -> piece != Piece.T)
-    );
+    private static final PieceCounter ALL_PIECE_COUNTER = new PieceCounter(Piece.valueList());
 
     private final int maxHeight;
     private final MinoFactory minoFactory;
-    private final HashMap<Long, HashMap<Long, EnumMap<Piece, List<OriginalPiece>>>> pieceMap;
-    private final HashMap<Integer, List<Field>> maskFields;
-    private final EnumMap<Piece, PieceCounter> allPieceCounters;
-
+    private final HashMap<Long, HashMap<Long, EnumMap<Piece, List<KeyOriginalPiece>>>> pieceMap;
+    private final HashMap<Integer, List<MaskField>> maskFields;
 
     Runner(FactoryPool pool) {
         this(pool.getMinoFactory(), pool.getMaxHeight(), pool.getBlockMaskMapBoard2(), pool.getTSpinMaskFields(pool.getMaxHeight()));
@@ -31,107 +27,111 @@ class Runner {
 
     private Runner(
             MinoFactory minoFactory, int maxHeight,
-            HashMap<Long, HashMap<Long, EnumMap<Piece, List<OriginalPiece>>>> pieceMap, HashMap<Integer, List<Field>> maskFields
+            HashMap<Long, HashMap<Long, EnumMap<Piece, List<KeyOriginalPiece>>>> pieceMap, HashMap<Integer, List<MaskField>> maskFields
     ) {
         this.maxHeight = maxHeight;
         this.minoFactory = minoFactory;
         this.pieceMap = pieceMap;
         this.maskFields = maskFields;
-        this.allPieceCounters = LineCommons.getAllPieceCounters();
     }
 
     Stream<Operations> search(List<Operation> operationList) {
-        Field fieldWithoutT = LineCommons.toFieldWithoutT(minoFactory, operationList, maxHeight);
+        Candidate candidate = EmptyCandidate.create(minoFactory, maxHeight, operationList);
+
+        // 必ずTが含まれていること
+        OperationsWithT operationsWithT = new OperationsWithT(candidate.getOperationList(), minoFactory, maxHeight);
 
         // Tがない地形でライン消去が発生するとき
-        int clearLine = fieldWithoutT.freeze().clearLine();
-        if (0 < clearLine) {
+        Field fieldWithoutT = operationsWithT.newFieldWithoutT();
+        if (0 < fieldWithoutT.freeze().clearLine()) {
             return Stream.empty();
         }
 
         // Tミノを取得
-        // 必ずTが含まれていること
-        Optional<? extends Operation> optional = operationList.stream()
-                .filter(operation -> operation.getPiece() == Piece.T)
-                .findFirst();
-        assert optional.isPresent();
-        Operation operationT = optional.get();
-
         // Tミノが入れば、Tスピンになる
-        if (LineCommons.isTSpin(fieldWithoutT, operationT.getX(), operationT.getY())) {
-            // 解
-            return Stream.of(new Operations(operationList));
+        if (operationsWithT.isTSpin()) {
+            return Stream.of(operationsWithT.newOperations());
         }
 
         // 使っていないミノを置いてみてTスピンができないか探索
-        return localSearch(operationList, operationT, fieldWithoutT);
-    }
+        Solutions solutions = new Solutions();
 
-    private Stream<Operations> localSearch(List<Operation> operationList, Operation operationT, Field fieldWithoutT) {
-        PieceCounter usingPieceCounter = new PieceCounter(
-                operationList.stream().map(Operation::getPiece).filter(piece -> piece != Piece.T)
-        );
-        PieceCounter restPieceCounter = ALL_PIECE_WITHOUT_T.removeAndReturnNew(usingPieceCounter);
-
-        if (restPieceCounter.getCounter() == 0L) {
-            return Stream.empty();
-        }
-
+        Operation operationT = operationsWithT.getT();
         int index = operationT.getX() + operationT.getY() * 10;
-        return maskFields.get(index).stream()
+
+        // 探索開始時のライン消去数を記録
+        int clearedLine = candidate.newField().clearLine();
+
+        // まだブロックがない部分同じ形のマスクを取り除く
+        return this.maskFields.get(index).stream()
+                .filter(maskField -> {
+                    // 既に置くことができない場所にブロックがある
+                    Field field = candidate.newField();
+                    return maskField.getNotAllowed().canMerge(field);
+                })
                 .flatMap(maskField -> {
                     // Tスピンとして判定されるために必要なブロック
-                    Field needBlock = maskField.freeze();
-                    needBlock.reduce(fieldWithoutT);
+                    Field needBlock = maskField.getNeed().freeze();
+                    needBlock.reduce(operationsWithT.newFieldWithoutT());
 
                     assert !needBlock.isPerfect();
 
+                    // 置くことができないブロック
+                    Field notAllowedBlock = maskField.getNotAllowed();
+
                     // 探索
-                    Field field = LineCommons.toField(minoFactory, operationList, maxHeight);
-                    return this.next(operationList, restPieceCounter, field, needBlock);
+                    return this.next(solutions, candidate, needBlock, notAllowedBlock, clearedLine);
                 });
     }
 
-    private Stream<Operations> next(List<Operation> operationList, PieceCounter restPieceCounter, Field field, Field needBlock) {
-        // すべてが埋まっている
-        if (needBlock.isPerfect()) {
-            return Stream.of(new Operations(operationList));
-        }
-
-        // すべてのミノを使い切った
-        if (restPieceCounter.getCounter() == 0L) {
+    private Stream<Operations> next(
+            Solutions solutions, Candidate candidate, Field needBlock, Field notAllowedBlock, int clearedLine
+    ) {
+        // 消去されるライン数が探索開始時から変わっていない
+        if (clearedLine < candidate.newField().clearLine()) {
             return Stream.empty();
         }
 
-        EnumMap<Piece, List<OriginalPiece>> map = findPiecesFromMap(needBlock);
+        // すべてが埋まっている
+        if (needBlock.isPerfect()) {
+            solutions.add(candidate);
+            return Stream.of(candidate.toOperations());
+        }
 
-        return restPieceCounter.getBlockStream()
+        // すべてのミノを使い切った
+        PieceCounter usingPieceCounter = candidate.newPieceCounter();
+        PieceCounter remainderPieceCounter = ALL_PIECE_COUNTER.removeAndReturnNew(usingPieceCounter);
+        if (remainderPieceCounter.getCounter() == 0L) {
+            return Stream.empty();
+        }
+
+        // 既に解として登録済み
+        if (solutions.contains(candidate)) {
+            return Stream.empty();
+        }
+
+        EnumMap<Piece, List<KeyOriginalPiece>> map = findPiecesFromMap(needBlock);
+
+        return remainderPieceCounter.getBlockStream()
                 .flatMap(piece -> {
-                    // 次で使えるミノ
-                    PieceCounter nextRestPieceCounter = restPieceCounter.removeAndReturnNew(allPieceCounters.get(piece));
-
                     // 実際にミノをおく
                     return map.get(piece).stream()
-                            .filter(originalPiece -> field.canMerge(originalPiece.getMinoField()))
-                            .flatMap(originalPiece -> {
-                                // 次の地形
-                                Field freeze = field.freeze();
-                                freeze.put(originalPiece);
-
+                            .filter(candidate::canPut)
+                            .filter(keyOriginalPiece -> notAllowedBlock.canPut(keyOriginalPiece.getOriginalPiece()))
+                            .flatMap(keyOriginalPiece -> {
                                 // 埋める必要があるブロック
                                 Field freezeNeedBlock = needBlock.freeze();
-                                freezeNeedBlock.remove(originalPiece);
+                                freezeNeedBlock.remove(keyOriginalPiece.getOriginalPiece());
 
                                 // これまでの操作をリストにする
-                                ArrayList<Operation> operations = new ArrayList<>(operationList);
-                                operations.add(originalPiece);
-                                return this.next(operations, nextRestPieceCounter, freeze, freezeNeedBlock);
+                                Candidate nextCandidate = new RecursiveCandidate(candidate, keyOriginalPiece);
+                                return this.next(solutions, nextCandidate, freezeNeedBlock, notAllowedBlock, clearedLine);
                             });
                 });
     }
 
     // フィールドから1ブロックを取り出して、そのブロックを埋めるミノ一覧を取得
-    private EnumMap<Piece, List<OriginalPiece>> findPiecesFromMap(Field needBlock) {
+    private EnumMap<Piece, List<KeyOriginalPiece>> findPiecesFromMap(Field needBlock) {
         long lowBoard = needBlock.getBoard(0);
 
         if (lowBoard != 0L) {

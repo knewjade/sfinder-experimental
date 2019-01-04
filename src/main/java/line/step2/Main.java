@@ -16,8 +16,10 @@ import java.util.stream.Collectors;
 // ミノの個数ごとにファイルを振り分ける
 // ライン消去にTが使われる解だけを抽出する
 // すべての行にTがかかっている解だけを抽出する
+// TのまわりのブロックをTスピン判定されるようにする
 // y=5が揃っている状態
 // ミノが空中に浮いている可能性あり
+// ミノを追加した結果、消去されるライン数が変わらない解だけを抽出
 public class Main {
     public static void main(String[] args) throws IOException {
         {

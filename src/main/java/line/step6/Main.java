@@ -9,7 +9,7 @@ import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.List;
 
-// step4の結果をひとつにまとめる
+// step5の結果をひとつにまとめる
 public class Main {
     public static void main(String[] args) throws IOException {
         List<String> fileNames = Arrays.asList(

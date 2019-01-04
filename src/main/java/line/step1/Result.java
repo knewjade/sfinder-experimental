@@ -7,9 +7,9 @@ import core.neighbor.OriginalPiece;
 import java.util.stream.Stream;
 
 public interface Result {
-    boolean isSolution();
+    boolean isSolution(int maxClearedLine);
 
-    boolean isCandidate();
+    boolean isCandidate(int maxClearedLine);
 
     long getMinBoard();
 

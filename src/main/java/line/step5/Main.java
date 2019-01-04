@@ -11,6 +11,8 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 
 // Tを回転入れするために必要なミノを探索する
+// Tミノの周辺 (3x3の四角) にはミノを置かない
+// ミノを追加した結果、消去されるライン数が変わらない解だけを抽出
 public class Main {
     public static void main(String[] args) throws IOException {
         {
