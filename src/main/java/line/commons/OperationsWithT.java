@@ -6,6 +6,7 @@ import common.datastore.PieceCounter;
 import core.field.Field;
 import core.mino.MinoFactory;
 import core.mino.Piece;
+import line.commons.spin.SpinsCommons;
 
 import java.util.List;
 import java.util.Optional;
@@ -56,7 +57,7 @@ public class OperationsWithT {
     }
 
     public boolean isTSpin() {
-        return LineCommons.isTSpin(fieldWithoutT, operationT.getX(), operationT.getY());
+        return SpinsCommons.isTSpin(fieldWithoutT, operationT.getX(), operationT.getY());
     }
 
     public Field newField() {

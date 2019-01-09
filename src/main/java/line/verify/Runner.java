@@ -13,6 +13,7 @@ import core.mino.MinoFactory;
 import core.mino.Piece;
 import line.commons.FactoryPool;
 import line.commons.LineCommons;
+import line.commons.spin.SpinsCommons;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -96,7 +97,7 @@ public class Runner {
         }
 
         // Tミノの周りにブロックが存在する
-        if (!LineCommons.isTSpin(fieldWithoutT, tOperation.getX(), tOperation.getY())) {
+        if (!SpinsCommons.isTSpin(fieldWithoutT, tOperation.getX(), tOperation.getY())) {
             return false;
         }
 

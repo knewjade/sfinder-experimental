@@ -1,13 +1,13 @@
 package line.commons;
 
 import common.datastore.*;
-import commons.Commons;
 import core.field.Field;
 import core.field.FieldFactory;
 import core.mino.Mino;
 import core.mino.MinoFactory;
 import core.mino.Piece;
 import core.srs.Rotate;
+import line.commons.rotate.SpinResult;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
@@ -125,10 +125,6 @@ public class LineCommons {
                     freeze.remove(mino, x, y);
                     return freeze.isOnGround(mino, x, y);
                 });
-    }
-
-    public static boolean isTSpin(Field field, int x, int y) {
-        return Commons.isTSpin(field, x, y);
     }
 
     public static int getMaxY(Field field) {

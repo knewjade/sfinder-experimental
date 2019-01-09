@@ -10,11 +10,11 @@ import common.tetfu.field.ColoredField;
 import core.field.Field;
 import core.field.FieldFactory;
 import core.mino.Piece;
+import line.commons.spin.SpinsCommons;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 public class Commons {
     @NotNull
@@ -134,18 +134,6 @@ public class Commons {
     }
 
     public static boolean isTSpin(Field field, int x, int y) {
-        return 3L <= Stream.of(
-                isBlock(field, x - 1, y - 1),
-                isBlock(field, x - 1, y + 1),
-                isBlock(field, x + 1, y - 1),
-                isBlock(field, x + 1, y + 1)
-        ).filter(Boolean::booleanValue).count();
-    }
-
-    private static boolean isBlock(Field field, int x, int y) {
-        if (x < 0 || 10 <= x || y < 0) {
-            return true;
-        }
-        return !field.isEmpty(x, y);
+        return SpinsCommons.isTSpin(field, x, y);
     }
 }
