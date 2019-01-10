@@ -19,9 +19,9 @@ import java.util.*;
 
 public class Main {
     public static void main(String[] args) throws IOException {
-//        verify("output/last");
+        verify("output/last");
 //        verify("output/v2_7");
-        check("output/last");
+//        check("output/last");
     }
 
     private static void verify(String fileName) throws IOException {

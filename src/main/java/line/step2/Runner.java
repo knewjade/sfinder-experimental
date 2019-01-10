@@ -4,13 +4,13 @@ import common.datastore.Operation;
 import common.datastore.Operations;
 import common.datastore.PieceCounter;
 import core.field.Field;
+import core.field.FieldFactory;
+import core.mino.Mino;
 import core.mino.MinoFactory;
 import core.mino.Piece;
 import line.commons.*;
 
-import java.util.EnumMap;
-import java.util.HashMap;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Stream;
 
 class Runner {
@@ -62,8 +62,49 @@ class Runner {
         // 探索開始時のライン消去数を記録
         int clearedLine = candidate.newField().clearLine();
 
+        // Tの回転軸より下にブロックがない
+        // y=0のT-Spin Miniは床が使用されるため、Tが最も低い位置にあるとき、T下を埋めないケースも探索する
+        int minY = operationsWithT.newOperations().getOperations().stream()
+                .mapToInt(operation -> {
+                    Mino mino = minoFactory.create(operation.getPiece(), operation.getRotate());
+                    return operation.getY() + mino.getMinY();
+                })
+                .min()
+                .orElseGet(() -> 1);
+
+        Stream.Builder<MaskField> builder = Stream.builder();
+        int ty = operationT.getY();
+        if (ty == minY) {
+            int tx = operationT.getX();
+
+            List<List<Integer>> diffs = Arrays.asList(
+                    Collections.singletonList(-1),
+                    Collections.singletonList(1),
+                    Arrays.asList(-1, 1)
+            );
+
+            for (List<Integer> diff : diffs) {
+                Field needBlock = FieldFactory.createField(maxHeight);
+
+                for (Integer dx : diff) {
+                    int x = tx + dx;
+                    needBlock.setBlock(x, ty + 1);
+                }
+
+                Field notAllowed = FieldFactory.createField(maxHeight);
+
+                for (int y = 0; y < ty; y++) {
+                    for (int x = 0; x < 10; x++) {
+                        notAllowed.setBlock(x, y);
+                    }
+                }
+
+                builder.accept(new MaskField(needBlock, notAllowed));
+            }
+        }
+
         // まだブロックがない部分同じ形のマスクを取り除く
-        return this.maskFields.get(index).stream()
+        return Stream.concat(this.maskFields.get(index).stream(), builder.build())
                 .filter(maskField -> {
                     // 既に置くことができない場所にブロックがある
                     Field field = candidate.newField();

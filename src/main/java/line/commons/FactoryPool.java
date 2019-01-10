@@ -1,5 +1,6 @@
 package line.commons;
 
+import common.tetfu.common.ColorConverter;
 import commons.RotateReachableThreadLocal;
 import concurrent.LockedReachableThreadLocal;
 import core.action.reachable.LockedReachable;
@@ -23,6 +24,7 @@ public class FactoryPool {
     private final MinoFactory minoFactory;
     private final MinoShifter minoShifter;
     private final MinoRotation minoRotation;
+    private final ColorConverter colorConverter;
     private final LockedReachableThreadLocal lockedReachableThreadLocal;
     private final RotateReachableThreadLocal rotateReachableThreadLocal;
 
@@ -31,6 +33,7 @@ public class FactoryPool {
         this.minoFactory = new MinoFactory();
         this.minoShifter = new MinoShifter();
         this.minoRotation = new MinoRotation();
+        this.colorConverter = new ColorConverter();
         this.lockedReachableThreadLocal = new LockedReachableThreadLocal(minoFactory, minoShifter, minoRotation, maxHeight);
         this.rotateReachableThreadLocal = new RotateReachableThreadLocal(minoFactory, minoShifter, minoRotation, maxHeight);
     }
@@ -45,6 +48,10 @@ public class FactoryPool {
 
     public MinoShifter getMinoShifter() {
         return minoShifter;
+    }
+
+    public ColorConverter getColorConverter() {
+        return colorConverter;
     }
 
     public RotateReachable createRotateReachable() {

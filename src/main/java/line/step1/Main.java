@@ -68,8 +68,8 @@ public class Main {
             );
             String fileName = "13line";
 
-//            System.out.println(fileName);
-//            run(maxHeight, lineField, fileName);
+            System.out.println(fileName);
+            run(maxHeight, lineField, clearedLine, fileName);
         }
     }
 
