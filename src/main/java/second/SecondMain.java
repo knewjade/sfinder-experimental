@@ -38,7 +38,7 @@ public class SecondMain {
         LockedReachableThreadLocal reachableThreadLocal = new LockedReachableThreadLocal(minoFactory, minoShifter, minoRotation, maxHeight);
 
         OriginalPieceFactory factory = new OriginalPieceFactory(maxHeight);
-        Set<OriginalPiece> originalPieces = factory.create().stream()
+        Set<OriginalPiece> originalPieces = factory.createPieces().stream()
                 .filter(originalPiece -> {
                     Piece piece = originalPiece.getPiece();
                     Rotate rotate = originalPiece.getRotate();
