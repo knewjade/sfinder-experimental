@@ -123,7 +123,7 @@ public class SelectorMain {
             List<MinoOperationWithKey> operations = result.toAllOperations();
             String fumen = fumenParser.parse(operations, initField, fieldHeight, "");
             String title = result.getTitle();
-            String aLink = String.format("<div><a href='http://fumen.zui.jp/?v115@%s' target='_blank'>%s</a></div>", fumen, title);
+            String aLink = String.format("<div><a href='http://harddrop.com/fumen/?v115@%s' target='_blank'>%s</a></div>", fumen, title);
             htmlBuilder.addColumn(column, aLink);
         }
 
