@@ -1,5 +1,3 @@
-package square4x10;
-
 import common.SyntaxException;
 import common.buildup.BuildUp;
 import common.datastore.MinoOperationWithKey;

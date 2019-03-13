@@ -1,5 +1,3 @@
-package square4x10;
-
 import common.datastore.FullOperationWithKey;
 import common.parser.OperationTransform;
 import common.parser.StringEnumTransform;
@@ -9,7 +7,6 @@ import core.mino.MinoFactory;
 import core.mino.Piece;
 import core.neighbor.SimpleOriginalPiece;
 import core.srs.Rotate;
-import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
 import java.nio.file.Files;

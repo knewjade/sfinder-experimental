@@ -1,5 +1,3 @@
-package square4x10;
-
 import common.datastore.MinoOperationWithKey;
 import common.tetfu.common.ColorConverter;
 import core.field.Field;

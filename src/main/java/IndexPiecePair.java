@@ -1,5 +1,3 @@
-package square4x10;
-
 import core.neighbor.SimpleOriginalPiece;
 
 import java.util.Objects;

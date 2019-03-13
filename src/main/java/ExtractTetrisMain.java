@@ -1,5 +1,3 @@
-package square4x10;
-
 import core.mino.MinoFactory;
 import core.mino.Piece;
 import core.srs.Rotate;
