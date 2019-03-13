@@ -33,14 +33,20 @@ public class SelectorMain {
             throw new IllegalArgumentException("Specify sequence at 1st argument");
         }
 
+        String piecesString = args[0];
+//        String piecesString = "JTOLSZTIJI";
+
+        run(piecesString);
+    }
+
+    private static void run(String piecesString) throws IOException, SyntaxException {
         int fieldHeight = 4;
         MinoFactory minoFactory = new MinoFactory();
 
-        Path indexPath = Paths.get("output/index.csv");
+        Path indexPath = Paths.get("csv/index.csv");
         Map<Integer, IndexPiecePair> indexes = IndexPiecePairs.create(indexPath, minoFactory, fieldHeight);
         System.out.println(indexes.size());
 
-        String piecesString = "JTOLSZTIJI";
         LoadedPatternGenerator generator = new LoadedPatternGenerator(piecesString);
 
         int numOfPieces = generator.getDepth();
@@ -62,7 +68,7 @@ public class SelectorMain {
         Field initField = FieldFactory.createField(fieldHeight);
         HarddropReachableThreadLocal harddropReachableThreadLocal = new HarddropReachableThreadLocal(fieldHeight);
 
-        List<ResultWithTetris> results = Files.lines(Paths.get("output/tetris_indexed_solutions_SRS7BAG.csv")).parallel()
+        List<ResultWithTetris> results = Files.lines(Paths.get("csv/tetris_indexed_solutions_SRS.csv")).parallel()
                 .map(line -> (
                         Arrays.stream(line.split(","))
                                 .map(Integer::parseInt)
@@ -97,7 +103,11 @@ public class SelectorMain {
                 })
                 .filter(Objects::nonNull)
                 .collect(Collectors.toList());
-        System.out.println(results.size());
+        System.out.println("results = " + results.size());
+
+        if (results.isEmpty()) {
+            return;
+        }
 
         results.sort(Comparator.comparingInt(ResultWithTetris::calcCost));
 
@@ -117,7 +127,7 @@ public class SelectorMain {
             htmlBuilder.addColumn(column, aLink);
         }
 
-        MyFile file = new MyFile("output/tetris.html");
+        MyFile file = new MyFile("tetris.html");
         try (AsyncBufferedFileWriter writer = file.newAsyncWriter()) {
             List<String> lines = htmlBuilder.toList(Collections.singletonList(column), false);
             for (String line : lines) {
