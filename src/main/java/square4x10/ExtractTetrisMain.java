@@ -56,7 +56,7 @@ public class ExtractTetrisMain {
 
         System.out.println(solutions.size());
 
-        MyFile file = new MyFile("output/tetris_solutions_SRS.csv");
+        MyFile file = new MyFile("output/tetris_indexed_solutions_SRS.csv");
         try (AsyncBufferedFileWriter writer = file.newAsyncWriter()) {
             for (List<IndexPiecePair> solution : solutions) {
                 String line = solution.stream()
