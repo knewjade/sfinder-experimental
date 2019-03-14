@@ -9,6 +9,14 @@ repositories {
 
 dependencies {
     compile project(":solution-finder")
+
+    testCompile 'org.junit.jupiter:junit-jupiter-api:5.+'
+    testCompile 'org.junit.jupiter:junit-jupiter-engine:5.+'
+    testCompile 'org.junit.jupiter:junit-jupiter-params:5.+'
+    testCompile 'org.apiguardian:apiguardian-api:1.0.0'
+
+    // for assertions
+    testCompile 'org.assertj:assertj-core:3.+'
 }
 
 buildscript {
