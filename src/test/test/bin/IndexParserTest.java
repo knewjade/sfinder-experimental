@@ -28,7 +28,7 @@ class IndexParserTest {
 
     @Test
     void case1() {
-        IndexParser parser = createDefaultParser(1);
+        IndexParser parser = createDefaultParser(1);   // *
         assertThat(parser.parse(from(S))).isEqualTo(0);
         assertThat(parser.parse(from(Z))).isEqualTo(1);
         assertThat(parser.parse(from(J))).isEqualTo(2);
@@ -40,7 +40,7 @@ class IndexParserTest {
 
     @Test
     void case11() {
-        IndexParser parser = createDefaultParser(1, 1);
+        IndexParser parser = createDefaultParser(1, 1);  // *, *
         assertThat(parser.parse(from(S, S))).isEqualTo(0);
         assertThat(parser.parse(from(S, Z))).isEqualTo(1);
         assertThat(parser.parse(from(Z, S))).isEqualTo(7);
@@ -50,7 +50,7 @@ class IndexParserTest {
 
     @Test
     void case2() {
-        IndexParser parser = createDefaultParser(2);
+        IndexParser parser = createDefaultParser(2);  // *p2
         assertThat(parser.parse(from(S, Z))).isEqualTo(0);
         assertThat(parser.parse(from(S, J))).isEqualTo(1);
         assertThat(parser.parse(from(Z, S))).isEqualTo(6);
@@ -61,7 +61,7 @@ class IndexParserTest {
 
     @Test
     void case7() {
-        IndexParser parser = createDefaultParser(7);
+        IndexParser parser = createDefaultParser(7);  // *p7
         assertThat(parser.parse(from(S, Z, J, L, T, O, I))).isEqualTo(0);
         assertThat(parser.parse(from(S, Z, J, L, T, I, O))).isEqualTo(1);
         assertThat(parser.parse(from(I, O, T, L, J, Z, S))).isEqualTo(5039);  // 7! - 1
@@ -69,7 +69,7 @@ class IndexParserTest {
 
     @Test
     void case155() {
-        IndexParser parser = createDefaultParser(1, 5, 5);
+        IndexParser parser = createDefaultParser(1, 5, 5);  // Hold + *p5 + *p5
         assertThat(parser.parse(from(S, S, Z, J, L, T, S, Z, J, L, T))).isEqualTo(0);
         assertThat(parser.parse(from(S, S, Z, J, L, T, S, Z, J, L, O))).isEqualTo(1);
         assertThat(parser.parse(from(S, S, Z, J, L, T, S, Z, J, L, I))).isEqualTo(2);
