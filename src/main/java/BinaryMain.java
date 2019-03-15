@@ -2,6 +2,7 @@ import bin.IndexParser;
 import bin.SolutionBinary;
 import common.SyntaxException;
 import common.pattern.LoadedPatternGenerator;
+import core.mino.Piece;
 import lib.Stopwatch;
 
 import java.io.BufferedOutputStream;
@@ -9,6 +10,7 @@ import java.io.DataOutputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.EnumMap;
 import java.util.concurrent.TimeUnit;
 
 public class BinaryMain {
@@ -28,7 +30,13 @@ public class BinaryMain {
         Stopwatch stopwatch = Stopwatch.createStartedStopwatch();
 //        executorService.shutdown();
         LoadedPatternGenerator generator = new LoadedPatternGenerator("*,*p5,*p5");
-        IndexParser indexParser = new IndexParser(Arrays.asList(1, 5, 5));
+
+        EnumMap<Piece, Byte> pieceToNumber = new EnumMap<>(Piece.class);
+        for (Piece piece : Piece.values()) {
+            pieceToNumber.put(piece, (byte) piece.getNumber());
+        }
+
+        IndexParser indexParser = new IndexParser(pieceToNumber, Arrays.asList(1, 5, 5));
         long count = generator.blocksStream()
                 .mapToLong(pieces -> indexParser.parse(pieces.getPieceArray()))
                 .filter(l -> 44452800 < l)

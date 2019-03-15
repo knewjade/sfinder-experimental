@@ -2,26 +2,19 @@ package bin;
 
 import core.mino.Piece;
 
+import java.util.EnumMap;
 import java.util.List;
 
 // Unsupported multi threads
 public class IndexParser {
-    private static final byte[] PIECE_NUMBERS;
-
-    static {
-        Piece[] pieces = Piece.values();
-        byte[] bytes = new byte[pieces.length];
-        for (Piece piece : pieces) {
-            bytes[piece.getNumber()] = (byte) piece.getNumber();
-        }
-        PIECE_NUMBERS = bytes;
-    }
-
+    private final EnumMap<Piece, Byte> pieceToNumber;
     private final int[] maxPieceNumbers;
     private final int[] startIndexes;
     private final int[] endIndexes;
 
-    public IndexParser(List<Integer> maxIndexList) {
+    public IndexParser(EnumMap<Piece, Byte> pieceToNumber, List<Integer> maxIndexList) {
+        this.pieceToNumber = pieceToNumber;
+
         int sum = maxIndexList.stream().mapToInt(i -> i).sum();
 
         int[] maxPieceNumbers = new int[sum];
@@ -79,6 +72,6 @@ public class IndexParser {
     }
 
     private byte getPieceNumber(Piece piece) {
-        return PIECE_NUMBERS[piece.getNumber()];
+        return pieceToNumber.get(piece);
     }
 }
