@@ -52,7 +52,10 @@ public class IndexParser {
 
     public int parse(Piece[] pieces) {
         int[] ints = toInts(pieces);
+        return parse(ints);
+    }
 
+    private int parse(int[] ints) {
         int key = 0;
         for (int rangeIndex = 0, max = startIndexes.length; rangeIndex < max; rangeIndex++) {
             int startIndex = startIndexes[rangeIndex];
