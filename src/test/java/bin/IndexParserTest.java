@@ -1,5 +1,7 @@
 package bin;
 
+import common.SyntaxException;
+import common.pattern.LoadedPatternGenerator;
 import core.mino.Piece;
 import org.junit.jupiter.api.Test;
 
@@ -11,6 +13,18 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class IndexParserTest {
     private IndexParser createDefaultParser(Integer... maxIndexes) {
+        EnumMap<Piece, Integer> pieceToNumber = new EnumMap<>(Piece.class);
+        pieceToNumber.put(S, 0);
+        pieceToNumber.put(Z, 1);
+        pieceToNumber.put(J, 2);
+        pieceToNumber.put(L, 3);
+        pieceToNumber.put(T, 4);
+        pieceToNumber.put(O, 5);
+        pieceToNumber.put(I, 6);
+        return new IndexParser(pieceToNumber, Arrays.asList(maxIndexes));
+    }
+
+    private IndexParserOld createDefaultParserOld(Integer... maxIndexes) {
         EnumMap<Piece, Byte> pieceToNumber = new EnumMap<>(Piece.class);
         pieceToNumber.put(S, (byte) 0);
         pieceToNumber.put(Z, (byte) 1);
@@ -19,7 +33,7 @@ class IndexParserTest {
         pieceToNumber.put(T, (byte) 4);
         pieceToNumber.put(O, (byte) 5);
         pieceToNumber.put(I, (byte) 6);
-        return new IndexParser(pieceToNumber, Arrays.asList(maxIndexes));
+        return new IndexParserOld(pieceToNumber, Arrays.asList(maxIndexes));
     }
 
     private Piece[] from(Piece... pieces) {
@@ -90,5 +104,55 @@ class IndexParserTest {
         assertThat(parser.parse(from(S, I, O, T, L, J, I, O, T, L, J))).isEqualTo(2520 * 2520 - 1);  // 7p5*7p5 - 1
         assertThat(parser.parse(from(Z, S, Z, J, L, T, S, Z, J, L, T))).isEqualTo(2520 * 2520);  // 7p5*7p5
         assertThat(parser.parse(from(I, I, O, T, L, J, I, O, T, L, J))).isEqualTo(2520 * 2520 * 7 - 1);  // 7*7p5*7p5 - 1
+    }
+
+    @Test
+    void parsePieces() throws SyntaxException {
+        IndexParser indexParser = createDefaultParser(1, 5, 5);
+        LoadedPatternGenerator generator = new LoadedPatternGenerator("*,*p5,*p5");
+        long count = generator.blocksStream()
+                .mapToLong(pieces -> indexParser.parse(pieces.getPieceArray()))
+                .filter(l -> l < 0 || 44452800 <= l)
+                .count();
+        assertThat(count).isEqualTo(0);
+    }
+
+    @Test
+    void verify173() throws SyntaxException {
+        IndexParser indexParser = createDefaultParser(1, 7, 3);
+        IndexParserOld indexParserOld = createDefaultParserOld(1, 7, 3);
+
+        LoadedPatternGenerator generator = new LoadedPatternGenerator("*,*p7,*p3");
+        generator.blocksStream()
+                .forEach(pieces -> {
+                    Piece[] array = pieces.getPieceArray();
+                    assertThat(indexParser.parse(array)).isEqualTo(indexParserOld.parse(array));
+                });
+    }
+
+    @Test
+    void verify146() throws SyntaxException {
+        IndexParser indexParser = createDefaultParser(1, 4, 6);
+        IndexParserOld indexParserOld = createDefaultParserOld(1, 4, 6);
+
+        LoadedPatternGenerator generator = new LoadedPatternGenerator("*,*p4,*p6");
+        generator.blocksStream()
+                .forEach(pieces -> {
+                    Piece[] array = pieces.getPieceArray();
+                    assertThat(indexParser.parse(array)).isEqualTo(indexParserOld.parse(array));
+                });
+    }
+
+    @Test
+    void verify1172() throws SyntaxException {
+        IndexParser indexParser = createDefaultParser(1, 1, 7, 2);
+        IndexParserOld indexParserOld = createDefaultParserOld(1, 1, 7, 2);
+
+        LoadedPatternGenerator generator = new LoadedPatternGenerator("*,*,*p7,*p2");
+        generator.blocksStream()
+                .forEach(pieces -> {
+                    Piece[] array = pieces.getPieceArray();
+                    assertThat(indexParser.parse(array)).isEqualTo(indexParserOld.parse(array));
+                });
     }
 }

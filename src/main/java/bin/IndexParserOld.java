@@ -5,14 +5,13 @@ import core.mino.Piece;
 import java.util.EnumMap;
 import java.util.List;
 
-// Unsupported multi threads
-public class IndexParser2 {
+public class IndexParserOld {
     private final EnumMap<Piece, Byte> pieceToNumber;
     private final int[] maxPieceNumbers;
     private final int[] startIndexes;
     private final int[] endIndexes;
 
-    public IndexParser2(EnumMap<Piece, Byte> pieceToNumber, List<Integer> maxIndexList) {
+    public IndexParserOld(EnumMap<Piece, Byte> pieceToNumber, List<Integer> maxIndexList) {
         this.pieceToNumber = pieceToNumber;
 
         int sum = maxIndexList.stream().mapToInt(i -> i).sum();
@@ -53,10 +52,8 @@ public class IndexParser2 {
                 buffer[index] = pieceNumber;
             }
 
-            int key = 0;
-            for (int index = startIndex; index < endIndex; index++) {
+            for (int index = startIndex; index < endIndex - 1; index++) {
                 int b = buffer[index];
-//                key +=
                 for (int i = index + 1; i < endIndex; i++) {
                     if (b < buffer[i]) {
                         buffer[i] -= 1;

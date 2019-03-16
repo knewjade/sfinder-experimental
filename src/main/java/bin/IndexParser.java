@@ -5,14 +5,13 @@ import core.mino.Piece;
 import java.util.EnumMap;
 import java.util.List;
 
-// Unsupported multi threads
 public class IndexParser {
-    private final EnumMap<Piece, Byte> pieceToNumber;
-    private final int[] maxPieceNumbers;
+    private final EnumMap<Piece, Integer> pieceToNumber;
     private final int[] startIndexes;
     private final int[] endIndexes;
+    private final int[] scales;
 
-    public IndexParser(EnumMap<Piece, Byte> pieceToNumber, List<Integer> maxIndexList) {
+    public IndexParser(EnumMap<Piece, Integer> pieceToNumber, List<Integer> maxIndexList) {
         this.pieceToNumber = pieceToNumber;
 
         int sum = maxIndexList.stream().mapToInt(i -> i).sum();
@@ -22,14 +21,14 @@ public class IndexParser {
         int[] endIndexes = new int[maxIndexList.size()];
 
         int current = 0;
-        for (int i = 0; i < maxIndexList.size(); i++) {
-            Integer maxIndex = maxIndexList.get(i);
-            startIndexes[i] = current;
+        for (int index = 0; index < maxIndexList.size(); index++) {
+            int maxIndex = maxIndexList.get(index);
+            startIndexes[index] = current;
             current += maxIndex;
-            endIndexes[i] = current;
+            endIndexes[index] = current;
 
             int max = 7;
-            for (int j = startIndexes[i]; j < endIndexes[i]; j++) {
+            for (int j = startIndexes[index]; j < endIndexes[index]; j++) {
                 maxPieceNumbers[j] = max;
                 max -= 1;
             }
@@ -39,39 +38,51 @@ public class IndexParser {
 
         this.startIndexes = startIndexes;
         this.endIndexes = endIndexes;
-        this.maxPieceNumbers = maxPieceNumbers;
+
+        // scale
+        int[] scales = new int[sum];
+        int scale = 1;
+        for (int index = sum - 1; 0 <= index; index -= 1) {
+            scales[index] = scale;
+            scale *= maxPieceNumbers[index];
+        }
+
+        this.scales = scales;
     }
 
     public int parse(Piece[] pieces) {
-        int[] buffer = new int[maxPieceNumbers.length];
+        int[] ints = toInts(pieces);
+
+        int key = 0;
         for (int rangeIndex = 0, max = startIndexes.length; rangeIndex < max; rangeIndex++) {
             int startIndex = startIndexes[rangeIndex];
             int endIndex = endIndexes[rangeIndex];
 
             for (int index = startIndex; index < endIndex; index++) {
-                byte pieceNumber = getPieceNumber(pieces[index]);
-                buffer[index] = pieceNumber;
-            }
+                int current = ints[index];
+                key += current * scales[index];
 
-            for (int index = startIndex; index < endIndex - 1; index++) {
-                int b = buffer[index];
-                for (int i = index + 1; i < endIndex; i++) {
-                    if (b < buffer[i]) {
-                        buffer[i] -= 1;
+                for (int j = index + 1; j < endIndex; j++) {
+                    if (current < ints[j]) {
+                        key -= scales[j];
                     }
                 }
             }
         }
 
-        int key = buffer[0];
-        for (int index = 1; index < buffer.length; index++) {
-            key = key * maxPieceNumbers[index] + buffer[index];
-        }
-
         return key;
     }
 
-    private byte getPieceNumber(Piece piece) {
+    private int[] toInts(Piece[] pieces) {
+        int length = pieces.length;
+        int[] ints = new int[length];
+        for (int index = 0; index < length; index++) {
+            ints[index] = getPieceNumber(pieces[index]);
+        }
+        return ints;
+    }
+
+    private int getPieceNumber(Piece piece) {
         return pieceToNumber.get(piece);
     }
 }
