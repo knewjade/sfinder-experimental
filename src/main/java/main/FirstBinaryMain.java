@@ -1,8 +1,9 @@
 package main;
 
-import bin.index.IndexParser;
-import bin.index.IndexParsers;
 import bin.SolutionBinary;
+import bin.index.IndexParser;
+import bin.pieces.PieceNumber;
+import bin.pieces.PieceNumberConverter;
 import common.buildup.BuildUpStream;
 import common.datastore.MinoOperationWithKey;
 import common.datastore.Operation;
@@ -49,7 +50,8 @@ public class FirstBinaryMain {
         // 初期化
         Field initField = FieldFactory.createField(fieldHeight);
         HarddropReachableThreadLocal harddropReachableThreadLocal = new HarddropReachableThreadLocal(fieldHeight);
-        IndexParser indexParser = IndexParsers.createDefaultParser(1, 1, 1, 1, 1, 1, 1, 1, 1);
+        PieceNumberConverter converter = PieceNumberConverter.createDefaultConverter();
+        IndexParser indexParser = new IndexParser(Arrays.asList(1, 1, 1, 1, 1, 1, 1, 1, 1));
 
         // 対象となる解の数を表示用に事前に取得
         String solutionFilePath = "resources/tetris_indexed_solutions_" + postfix + ".csv";
@@ -91,7 +93,10 @@ public class FirstBinaryMain {
                     return new BuildUpStream(reachable, fieldHeight).existsValidBuildPattern(initField, operations);
                 })
                 .forEach(operations -> {
-                    Piece[] pieces = operations.stream().map(Operation::getPiece).toArray(Piece[]::new);
+                    PieceNumber[] pieces = operations.stream()
+                            .map(Operation::getPiece)
+                            .map(converter::get)
+                            .toArray(PieceNumber[]::new);
                     int index = indexParser.parse(pieces);
                     solutionBinary.put(index, (byte) 1);
                 });

@@ -1,5 +1,7 @@
 package bin.index;
 
+import bin.pieces.PieceNumber;
+import bin.pieces.PieceNumberConverter;
 import common.SyntaxException;
 import common.pattern.LoadedPatternGenerator;
 import core.mino.Piece;
@@ -13,7 +15,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class IndexParserTest {
     private IndexParser createDefaultParser(Integer... maxIndexes) {
-        return IndexParsers.createDefaultParser(maxIndexes);
+        return new IndexParser(Arrays.asList(maxIndexes));
     }
 
     private IndexParserOld createDefaultParserOld(Integer... maxIndexes) {
@@ -28,8 +30,13 @@ class IndexParserTest {
         return new IndexParserOld(pieceToNumber, Arrays.asList(maxIndexes));
     }
 
-    private Piece[] from(Piece... pieces) {
-        return pieces;
+    private PieceNumber[] from(Piece... pieces) {
+        PieceNumberConverter converter = PieceNumberConverter.createDefaultConverter();
+        PieceNumber[] numbers = new PieceNumber[pieces.length];
+        for (int index = 0; index < pieces.length; index++) {
+            numbers[index] = converter.get(pieces[index]);
+        }
+        return numbers;
     }
 
     @Test
@@ -103,7 +110,7 @@ class IndexParserTest {
         IndexParser indexParser = createDefaultParser(1, 5, 5);
         LoadedPatternGenerator generator = new LoadedPatternGenerator("*,*p5,*p5");
         long count = generator.blocksStream()
-                .mapToLong(pieces -> indexParser.parse(pieces.getPieceArray()))
+                .mapToLong(pieces -> indexParser.parse(from(pieces.getPieceArray())))
                 .filter(l -> l < 0 || 44452800 <= l)
                 .count();
         assertThat(count).isEqualTo(0);
@@ -117,8 +124,9 @@ class IndexParserTest {
         LoadedPatternGenerator generator = new LoadedPatternGenerator("*,*p7,*p3");
         generator.blocksStream()
                 .forEach(pieces -> {
-                    Piece[] array = pieces.getPieceArray();
-                    assertThat(indexParser.parse(array)).isEqualTo(indexParserOld.parse(array));
+                    Piece[] pieceArray = pieces.getPieceArray();
+                    PieceNumber[] numberArray = from(pieceArray);
+                    assertThat(indexParser.parse(numberArray)).isEqualTo(indexParserOld.parse(pieceArray));
                 });
     }
 
@@ -130,8 +138,9 @@ class IndexParserTest {
         LoadedPatternGenerator generator = new LoadedPatternGenerator("*,*p4,*p6");
         generator.blocksStream()
                 .forEach(pieces -> {
-                    Piece[] array = pieces.getPieceArray();
-                    assertThat(indexParser.parse(array)).isEqualTo(indexParserOld.parse(array));
+                    Piece[] pieceArray = pieces.getPieceArray();
+                    PieceNumber[] numberArray = from(pieceArray);
+                    assertThat(indexParser.parse(numberArray)).isEqualTo(indexParserOld.parse(pieceArray));
                 });
     }
 
@@ -143,8 +152,9 @@ class IndexParserTest {
         LoadedPatternGenerator generator = new LoadedPatternGenerator("*,*,*p7,*p2");
         generator.blocksStream()
                 .forEach(pieces -> {
-                    Piece[] array = pieces.getPieceArray();
-                    assertThat(indexParser.parse(array)).isEqualTo(indexParserOld.parse(array));
+                    Piece[] pieceArray = pieces.getPieceArray();
+                    PieceNumber[] numberArray = from(pieceArray);
+                    assertThat(indexParser.parse(numberArray)).isEqualTo(indexParserOld.parse(pieceArray));
                 });
     }
 }

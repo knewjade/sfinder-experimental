@@ -1,19 +1,15 @@
 package bin.index;
 
-import core.mino.Piece;
+import bin.pieces.PieceNumber;
 
-import java.util.EnumMap;
 import java.util.List;
 
 public class IndexParser {
-    private final EnumMap<Piece, Integer> pieceToNumber;
     private final int[] startIndexes;
     private final int[] endIndexes;
     private final int[] scales;
 
-    public IndexParser(EnumMap<Piece, Integer> pieceToNumber, List<Integer> maxIndexList) {
-        this.pieceToNumber = pieceToNumber;
-
+    public IndexParser(List<Integer> maxIndexList) {
         int sum = maxIndexList.stream().mapToInt(i -> i).sum();
 
         int[] maxPieceNumbers = new int[sum];
@@ -50,23 +46,18 @@ public class IndexParser {
         this.scales = scales;
     }
 
-    public int parse(Piece[] pieces) {
-        int[] ints = toInts(pieces);
-        return parse(ints);
-    }
-
-    private int parse(int[] ints) {
+    public int parse(PieceNumber[] pieces) {
         int key = 0;
         for (int rangeIndex = 0, max = startIndexes.length; rangeIndex < max; rangeIndex++) {
             int startIndex = startIndexes[rangeIndex];
             int endIndex = endIndexes[rangeIndex];
 
             for (int index = startIndex; index < endIndex; index++) {
-                int current = ints[index];
+                int current = pieces[index].getNumber();
                 key += current * scales[index];
 
                 for (int j = index + 1; j < endIndex; j++) {
-                    if (current < ints[j]) {
+                    if (current < pieces[j].getNumber()) {
                         key -= scales[j];
                     }
                 }
@@ -74,18 +65,5 @@ public class IndexParser {
         }
 
         return key;
-    }
-
-    private int[] toInts(Piece[] pieces) {
-        int length = pieces.length;
-        int[] ints = new int[length];
-        for (int index = 0; index < length; index++) {
-            ints[index] = getPieceNumber(pieces[index]);
-        }
-        return ints;
-    }
-
-    private int getPieceNumber(Piece piece) {
-        return pieceToNumber.get(piece);
     }
 }

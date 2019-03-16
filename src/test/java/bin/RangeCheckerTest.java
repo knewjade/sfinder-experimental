@@ -1,29 +1,27 @@
 package bin;
 
+import bin.pieces.PieceNumber;
+import bin.pieces.PieceNumberConverter;
 import core.mino.Piece;
 import org.junit.jupiter.api.Test;
 
 import java.util.Arrays;
-import java.util.EnumMap;
 
 import static core.mino.Piece.*;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class RangeCheckerTest {
     private static RangeChecker createDefaultChecker(Integer... maxIndexes) {
-        EnumMap<Piece, Integer> pieceToNumber = new EnumMap<>(Piece.class);
-        pieceToNumber.put(S, 0);
-        pieceToNumber.put(Z, 1);
-        pieceToNumber.put(J, 2);
-        pieceToNumber.put(L, 3);
-        pieceToNumber.put(T, 4);
-        pieceToNumber.put(O, 5);
-        pieceToNumber.put(I, 6);
-        return new RangeChecker(pieceToNumber, Arrays.asList(maxIndexes));
+        return new RangeChecker(Arrays.asList(maxIndexes));
     }
 
-    private Piece[] from(Piece... pieces) {
-        return pieces;
+    private PieceNumber[] from(Piece... pieces) {
+        PieceNumberConverter converter = PieceNumberConverter.createDefaultConverter();
+        PieceNumber[] numbers = new PieceNumber[pieces.length];
+        for (int index = 0; index < pieces.length; index++) {
+            numbers[index] = converter.get(pieces[index]);
+        }
+        return numbers;
     }
 
     @Test
