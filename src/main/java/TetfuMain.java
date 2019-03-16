@@ -6,6 +6,8 @@ import core.mino.MinoFactory;
 import entry.path.output.MyFile;
 import entry.path.output.OneFumenParser;
 import lib.AsyncBufferedFileWriter;
+import main.IndexPiecePair;
+import main.IndexPiecePairs;
 
 import java.io.IOException;
 import java.nio.file.Files;

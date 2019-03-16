@@ -1,4 +1,4 @@
-package bin;
+package bin.index;
 
 import core.mino.Piece;
 

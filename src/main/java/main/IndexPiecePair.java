@@ -1,21 +1,23 @@
+package main;
+
 import core.neighbor.SimpleOriginalPiece;
 
 import java.util.Objects;
 
-class IndexPiecePair {
+public class IndexPiecePair {
     private final int index;
     private final SimpleOriginalPiece simpleOriginalPiece;
 
-    IndexPiecePair(int index, SimpleOriginalPiece simpleOriginalPiece) {
+    public IndexPiecePair(int index, SimpleOriginalPiece simpleOriginalPiece) {
         this.index = index;
         this.simpleOriginalPiece = simpleOriginalPiece;
     }
 
-    int getIndex() {
+    public int getIndex() {
         return index;
     }
 
-    SimpleOriginalPiece getSimpleOriginalPiece() {
+    public SimpleOriginalPiece getSimpleOriginalPiece() {
         return simpleOriginalPiece;
     }
 

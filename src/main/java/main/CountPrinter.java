@@ -1,3 +1,5 @@
+package main;
+
 import lib.Stopwatch;
 
 import java.util.concurrent.TimeUnit;

@@ -3,6 +3,8 @@ import core.mino.Piece;
 import core.srs.Rotate;
 import entry.path.output.MyFile;
 import lib.AsyncBufferedFileWriter;
+import main.IndexPiecePair;
+import main.IndexPiecePairs;
 
 import java.nio.file.Files;
 import java.nio.file.Path;

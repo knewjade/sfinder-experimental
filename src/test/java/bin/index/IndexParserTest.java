@@ -1,4 +1,4 @@
-package bin;
+package bin.index;
 
 import common.SyntaxException;
 import common.pattern.LoadedPatternGenerator;
@@ -11,8 +11,12 @@ import java.util.EnumMap;
 import static core.mino.Piece.*;
 import static org.assertj.core.api.Assertions.assertThat;
 
-class IndexParserOldTest {
-    private IndexParserOld createDefaultParser(Integer... maxIndexes) {
+class IndexParserTest {
+    private IndexParser createDefaultParser(Integer... maxIndexes) {
+        return IndexParsers.createDefaultParser(maxIndexes);
+    }
+
+    private IndexParserOld createDefaultParserOld(Integer... maxIndexes) {
         EnumMap<Piece, Byte> pieceToNumber = new EnumMap<>(Piece.class);
         pieceToNumber.put(S, (byte) 0);
         pieceToNumber.put(Z, (byte) 1);
@@ -30,7 +34,7 @@ class IndexParserOldTest {
 
     @Test
     void case1() {
-        IndexParserOld parser = createDefaultParser(1);   // *
+        IndexParser parser = createDefaultParser(1);   // *
         assertThat(parser.parse(from(S))).isEqualTo(0);
         assertThat(parser.parse(from(Z))).isEqualTo(1);
         assertThat(parser.parse(from(J))).isEqualTo(2);
@@ -42,7 +46,7 @@ class IndexParserOldTest {
 
     @Test
     void case11() {
-        IndexParserOld parser = createDefaultParser(1, 1);  // *, *
+        IndexParser parser = createDefaultParser(1, 1);  // *, *
         assertThat(parser.parse(from(S, S))).isEqualTo(0);
         assertThat(parser.parse(from(S, Z))).isEqualTo(1);
         assertThat(parser.parse(from(Z, S))).isEqualTo(7);
@@ -52,7 +56,7 @@ class IndexParserOldTest {
 
     @Test
     void case2() {
-        IndexParserOld parser = createDefaultParser(2);  // *p2
+        IndexParser parser = createDefaultParser(2);  // *p2
         assertThat(parser.parse(from(S, Z))).isEqualTo(0);
         assertThat(parser.parse(from(S, J))).isEqualTo(1);
         assertThat(parser.parse(from(Z, S))).isEqualTo(6);
@@ -63,7 +67,7 @@ class IndexParserOldTest {
 
     @Test
     void case7() {
-        IndexParserOld parser = createDefaultParser(7);  // *p7
+        IndexParser parser = createDefaultParser(7);  // *p7
         assertThat(parser.parse(from(S, Z, J, L, T, O, I))).isEqualTo(0);
         assertThat(parser.parse(from(S, Z, J, L, T, I, O))).isEqualTo(1);
         assertThat(parser.parse(from(I, O, T, L, J, Z, S))).isEqualTo(5039);  // 7! - 1
@@ -71,7 +75,7 @@ class IndexParserOldTest {
 
     @Test
     void case74() {
-        IndexParserOld parser = createDefaultParser(7, 4);  // *p7 + *p4
+        IndexParser parser = createDefaultParser(7, 4);  // *p7 + *p4
         assertThat(parser.parse(from(S, Z, J, L, T, O, I, S, Z, J, L))).isEqualTo(0);
         assertThat(parser.parse(from(S, Z, J, L, T, O, I, S, Z, J, T))).isEqualTo(1);
         assertThat(parser.parse(from(S, Z, J, L, T, O, I, S, Z, J, O))).isEqualTo(2);
@@ -83,7 +87,7 @@ class IndexParserOldTest {
 
     @Test
     void case155() {
-        IndexParserOld parser = createDefaultParser(1, 5, 5);  // Hold + *p5 + *p5
+        IndexParser parser = createDefaultParser(1, 5, 5);  // Hold + *p5 + *p5
         assertThat(parser.parse(from(S, S, Z, J, L, T, S, Z, J, L, T))).isEqualTo(0);
         assertThat(parser.parse(from(S, S, Z, J, L, T, S, Z, J, L, O))).isEqualTo(1);
         assertThat(parser.parse(from(S, S, Z, J, L, T, S, Z, J, L, I))).isEqualTo(2);
@@ -96,12 +100,51 @@ class IndexParserOldTest {
 
     @Test
     void parsePieces() throws SyntaxException {
-        IndexParserOld indexParser = createDefaultParser(1, 5, 5);
+        IndexParser indexParser = createDefaultParser(1, 5, 5);
         LoadedPatternGenerator generator = new LoadedPatternGenerator("*,*p5,*p5");
         long count = generator.blocksStream()
                 .mapToLong(pieces -> indexParser.parse(pieces.getPieceArray()))
                 .filter(l -> l < 0 || 44452800 <= l)
                 .count();
         assertThat(count).isEqualTo(0);
+    }
+
+    @Test
+    void verify173() throws SyntaxException {
+        IndexParser indexParser = createDefaultParser(1, 7, 3);
+        IndexParserOld indexParserOld = createDefaultParserOld(1, 7, 3);
+
+        LoadedPatternGenerator generator = new LoadedPatternGenerator("*,*p7,*p3");
+        generator.blocksStream()
+                .forEach(pieces -> {
+                    Piece[] array = pieces.getPieceArray();
+                    assertThat(indexParser.parse(array)).isEqualTo(indexParserOld.parse(array));
+                });
+    }
+
+    @Test
+    void verify146() throws SyntaxException {
+        IndexParser indexParser = createDefaultParser(1, 4, 6);
+        IndexParserOld indexParserOld = createDefaultParserOld(1, 4, 6);
+
+        LoadedPatternGenerator generator = new LoadedPatternGenerator("*,*p4,*p6");
+        generator.blocksStream()
+                .forEach(pieces -> {
+                    Piece[] array = pieces.getPieceArray();
+                    assertThat(indexParser.parse(array)).isEqualTo(indexParserOld.parse(array));
+                });
+    }
+
+    @Test
+    void verify1172() throws SyntaxException {
+        IndexParser indexParser = createDefaultParser(1, 1, 7, 2);
+        IndexParserOld indexParserOld = createDefaultParserOld(1, 1, 7, 2);
+
+        LoadedPatternGenerator generator = new LoadedPatternGenerator("*,*,*p7,*p2");
+        generator.blocksStream()
+                .forEach(pieces -> {
+                    Piece[] array = pieces.getPieceArray();
+                    assertThat(indexParser.parse(array)).isEqualTo(indexParserOld.parse(array));
+                });
     }
 }

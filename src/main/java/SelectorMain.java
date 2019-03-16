@@ -15,6 +15,8 @@ import core.srs.Rotate;
 import entry.path.output.MyFile;
 import entry.path.output.OneFumenParser;
 import lib.AsyncBufferedFileWriter;
+import main.IndexPiecePair;
+import main.IndexPiecePairs;
 import output.HTMLBuilder;
 import output.HTMLColumn;
 

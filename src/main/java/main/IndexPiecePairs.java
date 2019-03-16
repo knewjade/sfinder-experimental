@@ -1,3 +1,5 @@
+package main;
+
 import common.datastore.FullOperationWithKey;
 import common.parser.OperationTransform;
 import common.parser.StringEnumTransform;
@@ -15,8 +17,8 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-class IndexPiecePairs {
-    static Map<Integer, IndexPiecePair> create(Path path, MinoFactory minoFactory, int fieldHeight) throws IOException {
+public class IndexPiecePairs {
+    public static Map<Integer, IndexPiecePair> create(Path path, MinoFactory minoFactory, int fieldHeight) throws IOException {
         return create(Files.lines(path), minoFactory, fieldHeight);
     }
 
