@@ -13,15 +13,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class IndexParserTest {
     private IndexParser createDefaultParser(Integer... maxIndexes) {
-        EnumMap<Piece, Integer> pieceToNumber = new EnumMap<>(Piece.class);
-        pieceToNumber.put(S, 0);
-        pieceToNumber.put(Z, 1);
-        pieceToNumber.put(J, 2);
-        pieceToNumber.put(L, 3);
-        pieceToNumber.put(T, 4);
-        pieceToNumber.put(O, 5);
-        pieceToNumber.put(I, 6);
-        return new IndexParser(pieceToNumber, Arrays.asList(maxIndexes));
+        return IndexParsers.createDefaultParser(maxIndexes);
     }
 
     private IndexParserOld createDefaultParserOld(Integer... maxIndexes) {

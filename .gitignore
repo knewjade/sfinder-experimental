@@ -3,6 +3,7 @@
 build/
 release/
 out/
+resources/
 *.iml
 
 # Ignore Gradle GUI config
