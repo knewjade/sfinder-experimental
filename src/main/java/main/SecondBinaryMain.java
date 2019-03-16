@@ -26,7 +26,7 @@ public class SecondBinaryMain {
 
     private static void run(String postfix) throws IOException {
         // 9ミノのテトリスパフェ結果を読み込み
-        SolutionBinary binary9Piece = load9PieceBinary(postfix);
+        SolutionBinary binary9Piece = load9PieceBinary("resources/9pieces_" + postfix + ".bin");
 
         // 初期化
         PieceNumberConverter converter = PieceNumberConverter.createDefaultConverter();
@@ -124,8 +124,7 @@ public class SecondBinaryMain {
         }
     }
 
-    private static SolutionBinary load9PieceBinary(String postfix) throws IOException {
-        String name = "resources/9pieces_" + postfix + ".bin";
+    private static SolutionBinary load9PieceBinary(String name) throws IOException {
         int totalByte = getTotalByte(name);
         System.out.println(totalByte);  // 40353607
 

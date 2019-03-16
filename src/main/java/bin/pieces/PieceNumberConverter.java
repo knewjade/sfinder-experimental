@@ -37,7 +37,7 @@ public class PieceNumberConverter {
     private final EnumMap<Piece, PieceNumber> pieceToNumber;
     private final PieceNumber[] numberToPieceNumber;
 
-    public PieceNumberConverter(EnumMap<Piece, PieceNumber> pieceToNumber, PieceNumber... numberToPieceNumber) {
+    private PieceNumberConverter(EnumMap<Piece, PieceNumber> pieceToNumber, PieceNumber... numberToPieceNumber) {
         this.pieceToNumber = pieceToNumber;
         this.numberToPieceNumber = numberToPieceNumber;
     }
