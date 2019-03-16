@@ -1,6 +1,6 @@
 package main;
 
-import bin.SolutionBooleanBinary;
+import bin.SolutionBinary;
 import bin.index.IndexParser;
 import bin.pieces.PieceNumber;
 import bin.pieces.PieceNumberConverter;
@@ -36,28 +36,28 @@ public class FirstBinaryMain {
     }
 
     private static void run(String postfix) throws IOException {
-        // すべての地形ごとに結果を保存する
-        int max = 7 * 7 * 7 * 7 * 7 * 7 * 7 * 7 * 7;
-        SolutionBooleanBinary binary = new SolutionBooleanBinary(max);
-
-        // Indexを読み込み
+        // 初期化
         int fieldHeight = 4;
         MinoFactory minoFactory = new MinoFactory();
-
-        Path indexPath = Paths.get("resources/index.csv");
-        Map<Integer, IndexPiecePair> indexes = IndexPiecePairs.create(indexPath, minoFactory, fieldHeight);
-
-        // 初期化
         Field initField = FieldFactory.createField(fieldHeight);
         HarddropReachableThreadLocal harddropReachableThreadLocal = new HarddropReachableThreadLocal(fieldHeight);
         PieceNumberConverter converter = PieceNumberConverter.createDefaultConverter();
+
         IndexParser indexParser = new IndexParser(Arrays.asList(1, 1, 1, 1, 1, 1, 1, 1, 1));
+        int max = indexParser.getMax();
+        assert max == 7 * 7 * 7 * 7 * 7 * 7 * 7 * 7 * 7;
+        SolutionBinary binary = new SolutionBinary(max);
+
+        // Indexを読み込み
+        Path indexPath = Paths.get("resources/index.csv");
+        Map<Integer, IndexPiecePair> indexes = IndexPiecePairs.create(indexPath, minoFactory, fieldHeight);
 
         // 対象となる解の数を表示用に事前に取得
         String solutionFilePath = "resources/tetris_indexed_solutions_" + postfix + ".csv";
         CountPrinter countPrinter = new CountPrinter(1000, (int) Files.lines(Paths.get(solutionFilePath)).count());
 
         // 解から9ミノ（最後のIを除いた手順）で組めるミノ順をすべて列挙
+        // すべての地形ごとに結果を保存する
         Files.lines(Paths.get(solutionFilePath)).parallel()
                 .map(line -> (
                         // ファイルから読みこむ
@@ -98,16 +98,15 @@ public class FirstBinaryMain {
                             .map(converter::get)
                             .toArray(PieceNumber[]::new);
                     int index = indexParser.parse(pieces);
-                    binary.put(index, true);
+                    binary.put(index, (byte) 1);
                 });
 
-        boolean[] booleans = binary.get();
+        // 書き込み
+        byte[] bytes = binary.get();
 
         String name = "output/9pieces_" + postfix + ".bin";
         try (DataOutputStream dataOutStream = new DataOutputStream(new BufferedOutputStream(new FileOutputStream(name)))) {
-            for (boolean aBoolean : booleans) {
-                dataOutStream.writeBoolean(aBoolean);
-            }
+            dataOutStream.write(bytes, 0, bytes.length);
         }
     }
 }

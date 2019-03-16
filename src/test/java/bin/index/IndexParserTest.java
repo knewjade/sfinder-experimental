@@ -49,6 +49,8 @@ class IndexParserTest {
         assertThat(parser.parse(from(T))).isEqualTo(4);
         assertThat(parser.parse(from(O))).isEqualTo(5);
         assertThat(parser.parse(from(I))).isEqualTo(6); // 7^2 - 1
+
+        assertThat(parser.getMax()).isEqualTo(7);
     }
 
     @Test
@@ -59,6 +61,8 @@ class IndexParserTest {
         assertThat(parser.parse(from(Z, S))).isEqualTo(7);
         assertThat(parser.parse(from(J, S))).isEqualTo(14);
         assertThat(parser.parse(from(I, I))).isEqualTo(48);  // 7^2 - 1
+
+        assertThat(parser.getMax()).isEqualTo(49);
     }
 
     @Test
@@ -70,6 +74,8 @@ class IndexParserTest {
         assertThat(parser.parse(from(Z, J))).isEqualTo(7);
         assertThat(parser.parse(from(J, S))).isEqualTo(12);
         assertThat(parser.parse(from(I, O))).isEqualTo(41);  // 7*6 - 1
+
+        assertThat(parser.getMax()).isEqualTo(42);
     }
 
     @Test
@@ -78,6 +84,8 @@ class IndexParserTest {
         assertThat(parser.parse(from(S, Z, J, L, T, O, I))).isEqualTo(0);
         assertThat(parser.parse(from(S, Z, J, L, T, I, O))).isEqualTo(1);
         assertThat(parser.parse(from(I, O, T, L, J, Z, S))).isEqualTo(5039);  // 7! - 1
+
+        assertThat(parser.getMax()).isEqualTo(5040);
     }
 
     @Test
@@ -89,7 +97,9 @@ class IndexParserTest {
         assertThat(parser.parse(from(S, Z, J, L, T, O, I, S, Z, J, I))).isEqualTo(3);
         assertThat(parser.parse(from(S, Z, J, L, T, O, I, S, Z, L, J))).isEqualTo(4);
         assertThat(parser.parse(from(S, Z, J, L, T, I, O, S, Z, J, L))).isEqualTo(840);  // 7p4
-        assertThat(parser.parse(from(I, O, T, L, J, Z, S, I, O, T, L))).isEqualTo(4233600 - 1);  // 7!*7p4 - 1
+        assertThat(parser.parse(from(I, O, T, L, J, Z, S, I, O, T, L))).isEqualTo(5040 * 840 - 1);  // 7!*7p4 - 1
+
+        assertThat(parser.getMax()).isEqualTo(5040 * 840);
     }
 
     @Test
@@ -103,6 +113,8 @@ class IndexParserTest {
         assertThat(parser.parse(from(S, I, O, T, L, J, I, O, T, L, J))).isEqualTo(2520 * 2520 - 1);  // 7p5*7p5 - 1
         assertThat(parser.parse(from(Z, S, Z, J, L, T, S, Z, J, L, T))).isEqualTo(2520 * 2520);  // 7p5*7p5
         assertThat(parser.parse(from(I, I, O, T, L, J, I, O, T, L, J))).isEqualTo(2520 * 2520 * 7 - 1);  // 7*7p5*7p5 - 1
+
+        assertThat(parser.getMax()).isEqualTo(2520 * 2520 * 7);
     }
 
     @Test

@@ -8,6 +8,7 @@ public class IndexParser {
     private final int[] startIndexes;
     private final int[] endIndexes;
     private final int[] scales;
+    private final int max;
 
     public IndexParser(List<Integer> maxIndexList) {
         int sum = maxIndexList.stream().mapToInt(i -> i).sum();
@@ -44,6 +45,7 @@ public class IndexParser {
         }
 
         this.scales = scales;
+        this.max = scales[0] * 7;
     }
 
     public int parse(PieceNumber[] pieces) {
@@ -65,5 +67,10 @@ public class IndexParser {
         }
 
         return key;
+    }
+
+    // Max index (exclude)  ex) 7 = used 0-6
+    public int getMax() {
+        return max;
     }
 }
