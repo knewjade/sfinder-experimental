@@ -1,6 +1,6 @@
 package main;
 
-import bin.SolutionBinary;
+import bin.SolutionBooleanBinary;
 import bin.index.IndexParser;
 import bin.pieces.PieceNumber;
 import bin.pieces.PieceNumberConverter;
@@ -38,7 +38,7 @@ public class FirstBinaryMain {
     private static void run(String postfix) throws IOException {
         // すべての地形ごとに結果を保存する
         int max = 7 * 7 * 7 * 7 * 7 * 7 * 7 * 7 * 7;
-        SolutionBinary solutionBinary = new SolutionBinary(max);
+        SolutionBooleanBinary binary = new SolutionBooleanBinary(max);
 
         // Indexを読み込み
         int fieldHeight = 4;
@@ -98,13 +98,16 @@ public class FirstBinaryMain {
                             .map(converter::get)
                             .toArray(PieceNumber[]::new);
                     int index = indexParser.parse(pieces);
-                    solutionBinary.put(index, (byte) 1);
+                    binary.put(index, true);
                 });
 
+        boolean[] booleans = binary.get();
+
         String name = "output/9pieces_" + postfix + ".bin";
-        DataOutputStream dataOutStream = new DataOutputStream(new BufferedOutputStream(new FileOutputStream(name)));
-        byte[] bytes = solutionBinary.get();
-        dataOutStream.write(bytes, 0, bytes.length);
-        dataOutStream.close();
+        try (DataOutputStream dataOutStream = new DataOutputStream(new BufferedOutputStream(new FileOutputStream(name)))) {
+            for (boolean aBoolean : booleans) {
+                dataOutStream.writeBoolean(aBoolean);
+            }
+        }
     }
 }

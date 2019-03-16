@@ -1,10 +1,10 @@
 package bin;
 
-public class SolutionBinary {
+public class SolutionByteBinary {
     private final byte[] bytes;
     private final int max;
 
-    public SolutionBinary(int max) {
+    public SolutionByteBinary(int max) {
         this.bytes = new byte[max];
         this.max = max;
     }

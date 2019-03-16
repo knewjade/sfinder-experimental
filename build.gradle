@@ -28,7 +28,7 @@ buildscript {
 sourceCompatibility = 1.8
 
 jar {
-    manifest.attributes 'Main-Class': 'FirstBinaryMain'
+    manifest.attributes 'Main-Class': 'ExpMain'
     from configurations.compile.collect {
         it.isDirectory() ? it : zipTree(it)
     }
