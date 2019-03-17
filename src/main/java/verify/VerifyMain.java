@@ -40,6 +40,9 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class VerifyMain {
+    private static final String CSV_DIRECTORY = "resources/csv/";
+    private static final String BIN_DIRECTORY = "resources/bin/";
+
     private static final List<List<Integer>> maxIndexesHoldEmpty = Arrays.asList(
             Arrays.asList(7, 4),
             Arrays.asList(4, 7),
@@ -139,10 +142,10 @@ public class VerifyMain {
 
         MinoFactory minoFactory = new MinoFactory();
         int fieldHeight = 4;
-        Path indexPath = Paths.get("resources/csv/index.csv");
+        Path indexPath = Paths.get(CSV_DIRECTORY + "index.csv");
         Map<Integer, IndexPiecePair> indexes = IndexPiecePairs.create(indexPath, minoFactory, fieldHeight);
 
-        List<WithTetris> withTetrisList = Files.lines(Paths.get("resources/csv/tetris_indexed_solutions_SRS7BAG.csv")).parallel()
+        List<WithTetris> withTetrisList = Files.lines(Paths.get(CSV_DIRECTORY + "tetris_indexed_solutions_SRS7BAG.csv")).parallel()
                 .map(line -> (
                         Arrays.stream(line.split(","))
                                 .map(Integer::parseInt)
@@ -442,10 +445,10 @@ public class VerifyMain {
         String inputName;
         if (isFirstHoldEmpty) {
             String prefix = maxIndexes.stream().map(Object::toString).collect(Collectors.joining());
-            inputName = "resources/bin/" + prefix + ".bin";
+            inputName = BIN_DIRECTORY + prefix + ".bin";
         } else {
             String prefix = maxIndexes.stream().map(Object::toString).collect(Collectors.joining());
-            inputName = "resources/bin/h" + prefix + ".bin";
+            inputName = BIN_DIRECTORY + "h" + prefix + ".bin";
         }
         return inputName;
     }
