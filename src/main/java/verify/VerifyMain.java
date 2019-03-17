@@ -61,6 +61,80 @@ public class VerifyMain {
     );
 
     public static void main(String[] args) throws IOException, SyntaxException {
+        verifyAuto();
+//        verifyManual();
+    }
+
+    private static void verifyManual() throws IOException {
+        VerifyMain main = createMain();
+
+        try (Scanner scanner = new Scanner(System.in)) {
+            while (true) {
+                System.out.println("# Input '<pc-number> <sequence>' or 'exit'");
+
+                if (!scanner.hasNextLine()) {
+                    return;
+                }
+
+                String line = scanner.nextLine();
+                if ("exit".equals(line)) {
+                    return;
+                }
+
+                String[] split = line.split(" ");
+                if (split.length != 2) {
+                    System.err.println("ERROR: Num of arguments should be 2");
+                    continue;
+                }
+
+                try {
+                    main.run(split[0], split[1]);
+                } catch (Exception e) {
+                    System.err.println("ERROR: " + e.getMessage());
+                }
+            }
+        }
+
+//        run("1", "[]SZJLTOI SZJL");  // no solution
+//        run("1", "[]JSZTLOI JTIS");  // empty hold
+//        run("1", "[]JSZTLOI JTSI");  // exist soluiton
+
+//        main.run("1", "[I]JSZTLOI JST");  // no solution
+//        main.run("1", "[O]JSZTLOI JST");  // no solution
+    }
+
+    private static void verifyAuto() throws IOException, SyntaxException {
+        VerifyMain main = createMain();
+
+        Randoms randoms = new Randoms();
+
+        for (boolean isFirstHoldEmpty : Arrays.asList(true, false)) {
+            for (int cycle = 1; cycle <= 7; cycle++) {
+                List<Integer> maxIndexes = (isFirstHoldEmpty ? maxIndexesHoldEmpty : maxIndexesUsingHold).get(cycle - 1);
+                String patterns = maxIndexes.stream().map(it -> "*p" + it).collect(Collectors.joining(","));
+                System.out.println(patterns);
+
+                LoadedPatternGenerator generator = new LoadedPatternGenerator(patterns);
+                List<Pieces> candidates = generator.blocksStream().filter(it -> randoms.nextBoolean(0.0005)).collect(Collectors.toList());
+                System.out.println(candidates.size());
+                Collections.shuffle(candidates);
+
+                for (Pieces pieces : candidates.subList(0, 200)) {
+                    String pieceString = pieces.blockStream().map(Piece::getName).collect(Collectors.joining());
+                    String sequence;
+                    if (isFirstHoldEmpty) {
+                        sequence = "[]" + pieceString;
+                    } else {
+                        sequence = "[" + pieceString.charAt(0) + "]" + pieceString.substring(1);
+                    }
+                    System.out.println("### " + sequence + " ###");
+                    main.run(Integer.toString(cycle), sequence);
+                }
+            }
+        }
+    }
+
+    private static VerifyMain createMain() throws IOException {
         System.out.println("Loading...");
 
         MinoFactory minoFactory = new MinoFactory();
@@ -94,43 +168,9 @@ public class VerifyMain {
                 })
                 .collect(Collectors.toList());
 
-//        run("1", "[]SZJLTOI SZJL");  // no solution
-//        run("1", "[]JSZTLOI JTIS");  // empty hold
-//        run("1", "[]JSZTLOI JTSI");  // exist soluiton
-
         System.out.println();
 
-        VerifyMain main = new VerifyMain(minoFactory, fieldHeight, withTetrisList);
-
-        Randoms randoms = new Randoms();
-
-        for (boolean isFirstHoldEmpty : Arrays.asList(true, false)) {
-            for (int cycle = 1; cycle <= 7; cycle++) {
-                List<Integer> maxIndexes = (isFirstHoldEmpty ? maxIndexesHoldEmpty : maxIndexesUsingHold).get(cycle - 1);
-                String patterns = maxIndexes.stream().map(it -> "*p" + it).collect(Collectors.joining(","));
-                System.out.println(patterns);
-
-                LoadedPatternGenerator generator = new LoadedPatternGenerator(patterns);
-                List<Pieces> candidates = generator.blocksStream().filter(it -> randoms.nextBoolean(0.0005)).collect(Collectors.toList());
-                System.out.println(candidates.size());
-                Collections.shuffle(candidates);
-
-                for (Pieces pieces : candidates.subList(0, 200)) {
-                    String pieceString = pieces.blockStream().map(Piece::getName).collect(Collectors.joining());
-                    String sequence;
-                    if (isFirstHoldEmpty) {
-                        sequence = "[]" + pieceString;
-                    } else {
-                        sequence = "[" + pieceString.charAt(0) + "]" + pieceString.substring(1);
-                    }
-                    System.out.println("### " + sequence + " ###");
-                    main.run(Integer.toString(cycle), sequence);
-                }
-            }
-        }
-
-//        main.run("1", "[I]JSZTLOI JST");  // no solution
-//        main.run("1", "[O]JSZTLOI JST");  // no solution
+        return new VerifyMain(minoFactory, fieldHeight, withTetrisList);
     }
 
     private final int fieldHeight;
@@ -154,11 +194,11 @@ public class VerifyMain {
         try {
             cycle = Integer.valueOf(cycleString);
         } catch (NumberFormatException e) {
-            throw new IllegalArgumentException("1st argument (pc cycle) should be integer (1 <= value <= 7)");
+            throw new IllegalArgumentException("1st argument (pc number) should be integer (1 <= value <= 7)");
         }
 
         if (cycle < 1 || 7 < cycle) {
-            throw new IllegalArgumentException("1st argument (pc cycle) should be 1 <= value <= 7: " + cycleString);
+            throw new IllegalArgumentException("1st argument (pc number) should be 1 <= value <= 7: " + cycleString);
         }
 
         if (!sequence.startsWith("[")) {
@@ -219,7 +259,7 @@ public class VerifyMain {
         SolutionBinary binary = BinaryLoader.load(inputName);
         byte solution = binary.at(index);
 
-        System.out.println("PC cycle number: " + cycle);
+        System.out.println("PC number: " + cycle);
         System.out.println("Sequence: " + initAllPieces);
         System.out.println("Hold: " + hold);
         System.out.println();
@@ -311,21 +351,18 @@ public class VerifyMain {
             });
         }
 
-        LongPieces noHold10Sequence;
-        if (hold != null) {
-            // 入力にホールドあり
-            noHold10Sequence = new LongPieces(initPieces.subList(1, 11));
-        } else {
-            // 入力にホールドなし
-            noHold10Sequence = new LongPieces(initPieces.subList(0, 10));
-        }
-
-        // ホールドと同じ並びのものをひとつだけ取り除く
-        // ホールドした結果、同じ並びになるものがあるかもしれないため、取り除くのはひとつだけにする
         List<LongPieces> collect = lookUp.parse(initPieces).map(LongPieces::new).collect(Collectors.toList());
-        int firstNoHoldIndex = collect.indexOf(noHold10Sequence);
-        assert 0 <= firstNoHoldIndex;
-        collect.remove(firstNoHoldIndex);
+
+        if (hold == null) {
+            // 入力にホールドなし
+            LongPieces noHold10Sequence = new LongPieces(initPieces.subList(0, 10));
+
+            // ホールドせずにおくミノ順（同じ並びのもの）をひとつだけ取り除く
+            // ホールドした結果、同じ並びになるものがあるかもしれないため、ひとつだけ取り除く
+            int firstNoHoldIndex = collect.indexOf(noHold10Sequence);
+            assert 0 <= firstNoHoldIndex;
+            collect.remove(firstNoHoldIndex);
+        }
 
         HashSet<LongPieces> piecesWithHold = collect.stream()
                 .filter(it -> {
