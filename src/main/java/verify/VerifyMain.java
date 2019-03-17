@@ -1,5 +1,6 @@
 package verify;
 
+import bin.RangeChecker;
 import bin.SolutionBinary;
 import bin.index.IndexParser;
 import bin.pieces.PieceNumber;
@@ -41,22 +42,22 @@ import java.util.stream.Stream;
 public class VerifyMain {
     private static final List<List<Integer>> maxIndexesHoldEmpty = Arrays.asList(
             Arrays.asList(7, 4),
-            Arrays.asList(6, 5),
-            Arrays.asList(5, 6),
             Arrays.asList(4, 7),
-            Arrays.asList(3, 7, 1),
+            Arrays.asList(1, 7, 3),
+            Arrays.asList(5, 6),
             Arrays.asList(2, 7, 2),
-            Arrays.asList(1, 7, 3)
+            Arrays.asList(6, 5),
+            Arrays.asList(3, 7, 1)
     );
 
     private static final List<List<Integer>> maxIndexesUsingHold = Arrays.asList(
-            Arrays.asList(1, 7, 3),
             Arrays.asList(1, 6, 4),
-            Arrays.asList(1, 5, 5),
-            Arrays.asList(1, 4, 6),
             Arrays.asList(1, 3, 7),
-            Arrays.asList(1, 2, 7, 1),
-            Arrays.asList(1, 1, 7, 2)
+            Arrays.asList(1, 7, 3),
+            Arrays.asList(1, 4, 6),
+            Arrays.asList(1, 1, 7, 2),
+            Arrays.asList(1, 5, 5),
+            Arrays.asList(1, 2, 7, 1)
     );
 
     public static void main(String[] args) throws IOException, SyntaxException {
@@ -64,10 +65,10 @@ public class VerifyMain {
 
         MinoFactory minoFactory = new MinoFactory();
         int fieldHeight = 4;
-        Path indexPath = Paths.get("resources/index.csv");
+        Path indexPath = Paths.get("resources/csv/index.csv");
         Map<Integer, IndexPiecePair> indexes = IndexPiecePairs.create(indexPath, minoFactory, fieldHeight);
 
-        List<WithTetris> withTetrisList = Files.lines(Paths.get("resources/tetris_indexed_solutions_SRS7BAG.csv")).parallel()
+        List<WithTetris> withTetrisList = Files.lines(Paths.get("resources/csv/tetris_indexed_solutions_SRS7BAG.csv")).parallel()
                 .map(line -> (
                         Arrays.stream(line.split(","))
                                 .map(Integer::parseInt)
@@ -114,7 +115,7 @@ public class VerifyMain {
                 System.out.println(candidates.size());
                 Collections.shuffle(candidates);
 
-                for (Pieces pieces : candidates.subList(0, 100)) {
+                for (Pieces pieces : candidates.subList(0, 200)) {
                     String pieceString = pieces.blockStream().map(Piece::getName).collect(Collectors.joining());
                     String sequence;
                     if (isFirstHoldEmpty) {
@@ -122,7 +123,7 @@ public class VerifyMain {
                     } else {
                         sequence = "[" + pieceString.charAt(0) + "]" + pieceString.substring(1);
                     }
-                    System.out.println(sequence);
+                    System.out.println("### " + sequence + " ###");
                     main.run(Integer.toString(cycle), sequence);
                 }
             }
@@ -169,53 +170,57 @@ public class VerifyMain {
         }
 
         Piece hold;
-        List<Piece> pieces;
+        List<Piece> allPieces;
         if (sequence.startsWith("[]")) {
             hold = null;
-            pieces = Stream.of(sequence.substring(2).split(""))
+            allPieces = Stream.of(sequence.substring(2).split(""))
                     .map(StringEnumTransform::toPiece)
                     .collect(Collectors.toList());
 
-            if (pieces.size() != 11) {
-                throw new IllegalArgumentException("Length of sequence should be 11: " + pieces.size());
+            if (allPieces.size() != 11) {
+                throw new IllegalArgumentException("Length of sequence should be 11: " + allPieces.size());
             }
         } else if (sequence.charAt(2) == ']') {
             hold = StringEnumTransform.toPiece(sequence.charAt(1));
-            pieces = Stream.concat(
+            allPieces = Stream.concat(
                     Stream.of(hold),
                     Stream.of(sequence.substring(3).split("")).map(StringEnumTransform::toPiece)
             ).collect(Collectors.toList());
 
-            if (pieces.size() != 11) {
-                throw new IllegalArgumentException("Length of sequence excluding hold piece should be 10: " + pieces.size());
+            if (allPieces.size() != 11) {
+                throw new IllegalArgumentException("Length of sequence excluding hold piece should be 10: " + allPieces.size());
             }
         } else {
             throw new IllegalArgumentException("Illegal sequence: " + sequence);
         }
 
-        run(cycle, hold, pieces);
+        run(cycle, hold, allPieces);
     }
 
-    private void run(int cycle, Piece hold, List<Piece> initPieces) throws IOException {
-        assert initPieces.size() == 11;
+    private void run(int cycle, Piece hold, List<Piece> initAllPieces) throws IOException {
+        assert initAllPieces.size() == 11;
 
         boolean isFirstHoldEmpty = hold == null;
         List<List<Integer>> maxIndexesList = isFirstHoldEmpty ? maxIndexesHoldEmpty : maxIndexesUsingHold;
         List<Integer> maxIndexes = maxIndexesList.get(cycle - 1);
-        String inputName = getFileName(maxIndexes, isFirstHoldEmpty);
 
-        SolutionBinary binary = BinaryLoader.load(inputName);
+        PieceNumberConverter converter = PieceNumberConverter.createDefaultConverter();
+        PieceNumber[] numbers = initAllPieces.stream().map(converter::get).toArray(PieceNumber[]::new);
+
+        RangeChecker rangeChecker = new RangeChecker(maxIndexes);
+        if (!rangeChecker.check(numbers)) {
+            throw new IllegalArgumentException("The sequence is out of PC cycle range");
+        }
 
         IndexParser indexParser = new IndexParser(maxIndexes);
-        PieceNumberConverter converter = PieceNumberConverter.createDefaultConverter();
-        PieceNumber[] numbers = initPieces.stream().map(converter::get).toArray(PieceNumber[]::new);
-
         int index = indexParser.parse(numbers);
 
+        String inputName = getFileName(maxIndexes, isFirstHoldEmpty);
+        SolutionBinary binary = BinaryLoader.load(inputName);
         byte solution = binary.at(index);
 
         System.out.println("PC cycle number: " + cycle);
-        System.out.println("Sequence: " + initPieces);
+        System.out.println("Sequence: " + initAllPieces);
         System.out.println("Hold: " + hold);
         System.out.println();
 
@@ -225,15 +230,18 @@ public class VerifyMain {
         System.out.println("Solution: 0b" + toBinary(solution) + " [" + toString(converter, solution) + "]");
         System.out.println();
 
-        VerifyData data = verify(hold, initPieces);
+        VerifyData data = verify(hold, initAllPieces);
 
         System.out.println("# from index csv");
 
-        System.out.println("hold empty: " + data.isHoldEmpty);
+        System.out.println("hold empty: " + (data.isHoldEmpty != null));
         System.out.println("hold pieces: " + data.holdCandidates);
 
-        if (!data.sampleFumens.isEmpty()) {
+        if (data.isHoldEmpty != null || !data.sampleFumens.isEmpty()) {
             System.out.println("Sample: ");
+        }
+        if (data.isHoldEmpty != null) {
+            System.out.println(data.isHoldEmpty);
         }
         for (String fumen : data.sampleFumens) {
             System.out.println(fumen);
@@ -241,18 +249,21 @@ public class VerifyMain {
 
         // Verify
         if (solution == (byte) -2) {
-            if (!data.isHoldEmpty && data.holdCandidates.isEmpty()) {
+            // no solution
+            if (data.isHoldEmpty == null && data.holdCandidates.isEmpty()) {
                 System.out.println("*** Verified ***");
             } else {
                 throw new IllegalStateException("Not verified: byte is -2, but solution is found");
             }
         } else if (solution == (byte) -1) {
-            if (data.isHoldEmpty) {
+            // empty
+            if (data.isHoldEmpty != null) {
                 System.out.println("*** Verified ***");
             } else {
                 throw new IllegalStateException("Not verified: byte is -1, but solution without hold is not found");
             }
         } else {
+            // any piece
             byte expected = 0;
             for (Piece piece : data.holdCandidates) {
                 expected |= converter.get(piece).getBitByte();
@@ -278,7 +289,7 @@ public class VerifyMain {
             }
         }
 
-        boolean isHoldEmpty = false;
+        Optional<String> isHoldEmpty = Optional.empty();
         if (noHold9Sequence != null) {
             List<Piece> noHold9Pieces = noHold9Sequence.getPieces();
 
@@ -286,12 +297,18 @@ public class VerifyMain {
             PieceCounter noHold9PieceCounter = new PieceCounter(noHold9Pieces.stream());
 
             // ホールドなしでパフェできる
-            isHoldEmpty = withTetrisList.parallelStream()
+            Optional<WithTetris> optional = withTetrisList.parallelStream()
                     .filter(it -> noHold9PieceCounter.equals(it.get9PieceCounter()))
-                    .anyMatch(it -> {
+                    .filter(it -> {
                         HarddropReachable reachable = harddropReachableThreadLocal.get();
                         return BuildUp.existsValidByOrder(initField, it.get9Operations().stream(), noHold9Pieces, fieldHeight, reachable);
-                    });
+                    })
+                    .findAny();
+
+            isHoldEmpty = optional.map(withTetris -> {
+                String fumen = fumenParser.parse(withTetris.getAllOperations(), initField, fieldHeight, "");
+                return "Empty: http://harddrop.com/fumen/?v115@" + fumen;
+            });
         }
 
         LongPieces noHold10Sequence;
@@ -353,7 +370,7 @@ public class VerifyMain {
                 ))
                 .collect(Collectors.toList());
 
-        return new VerifyData(isHoldEmpty, pieceFlag.keySet(), samples);
+        return new VerifyData(isHoldEmpty.orElse(null), pieceFlag.keySet(), samples);
     }
 
     private String toBinary(byte value) {
@@ -388,10 +405,10 @@ public class VerifyMain {
         String inputName;
         if (isFirstHoldEmpty) {
             String prefix = maxIndexes.stream().map(Object::toString).collect(Collectors.joining());
-            inputName = "resources/third/" + prefix + ".bin";
+            inputName = "resources/bin/" + prefix + ".bin";
         } else {
             String prefix = maxIndexes.stream().map(Object::toString).collect(Collectors.joining());
-            inputName = "resources/third/h" + prefix + ".bin";
+            inputName = "resources/bin/h" + prefix + ".bin";
         }
         return inputName;
     }
@@ -433,11 +450,11 @@ class WithTetris {
 }
 
 class VerifyData {
-    final boolean isHoldEmpty;
+    final String isHoldEmpty;
     final Set<Piece> holdCandidates;
     final List<String> sampleFumens;
 
-    public VerifyData(boolean isHoldEmpty, Set<Piece> holdCandidates, List<String> sampleFumens) {
+    VerifyData(String isHoldEmpty, Set<Piece> holdCandidates, List<String> sampleFumens) {
         this.isHoldEmpty = isHoldEmpty;
         this.holdCandidates = holdCandidates;
         this.sampleFumens = sampleFumens;

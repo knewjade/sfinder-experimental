@@ -12,7 +12,7 @@ class PieceNumberTest {
         assertThat(pieceNumber)
                 .returns(Piece.S, PieceNumber::getPiece)
                 .returns(0, PieceNumber::getNumber)
-                .returns((byte) 1, PieceNumber::getBitByte);
+                .returns((byte) 0b1000000, PieceNumber::getBitByte);
     }
 
     @Test
@@ -21,6 +21,6 @@ class PieceNumberTest {
         assertThat(pieceNumber)
                 .returns(Piece.I, PieceNumber::getPiece)
                 .returns(6, PieceNumber::getNumber)
-                .returns((byte) 0b1000000, PieceNumber::getBitByte);
+                .returns((byte) 0b1, PieceNumber::getBitByte);
     }
 }

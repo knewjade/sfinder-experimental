@@ -86,10 +86,10 @@ public class ThirdBinaryMain {
         String outputName;
         if (isFirstHoldEmpty) {
             String prefix = maxIndexes.stream().map(Object::toString).collect(Collectors.joining());
-            outputName = "resources/third/" + prefix + ".bin";
+            outputName = "resources/bin/" + prefix + ".bin";
         } else {
             String prefix = maxIndexes.stream().map(Object::toString).collect(Collectors.joining());
-            outputName = "resources/third/h" + prefix + ".bin";
+            outputName = "resources/bin/h" + prefix + ".bin";
         }
 
         byte[] bytes = binary.get();
