@@ -5,6 +5,7 @@ import bin.SolutionBinary;
 import bin.index.IndexParser;
 import bin.pieces.PieceNumber;
 import bin.pieces.PieceNumberConverter;
+import common.order.ReverseOrderExcludingNoHoldLookUp;
 import common.order.ReverseOrderLookUp;
 import core.mino.Piece;
 
@@ -143,14 +144,14 @@ interface BinaryOutput {
 class HoldEmpty implements BinaryOutput {
     private final SolutionBinary outputBinary;
     private final IndexParser indexParser;
-    private final ReverseOrderLookUp lookUp;
+    private final ReverseOrderExcludingNoHoldLookUp lookUp;
     private final RangeChecker rangeChecker;
     private final List<PieceNumber> allPieceNumbers;
 
     HoldEmpty(SolutionBinary outputBinary, PieceNumberConverter converter, List<Integer> maxIndexes, IndexParser indexParser) {
         this.outputBinary = outputBinary;
         this.indexParser = indexParser;
-        this.lookUp = new ReverseOrderLookUp(10, 11);
+        this.lookUp = new ReverseOrderExcludingNoHoldLookUp(10, 11);
         this.rangeChecker = new RangeChecker(maxIndexes);
         this.allPieceNumbers = PieceNumberConverter.PPT_PIECES.stream()
                 .map(converter::get)
@@ -183,6 +184,9 @@ class HoldEmpty implements BinaryOutput {
 
         {
             // ホールドするパターン
+            //   ホールドせずに最後に任意のミノが置かれるパターンは除外ずみ
+            //   そのため、ホールドなしの結果は記録されない
+            //   ただし、ホールドを利用して、結果的にホールドなしと同じ並びになる結果は記録される
             lookUp.parse(beforeHoldList).forEach(pieceStream -> {
                 List<PieceNumber> afterHoldWithNull = pieceStream.collect(Collectors.toList());
 
@@ -190,12 +194,7 @@ class HoldEmpty implements BinaryOutput {
 
                 int holdIndex = afterHoldWithNull.indexOf(null);
 
-                if (holdIndex == 0) {
-                    // ホールドなしで置けるパターン
-                    return;
-                }
-
-                assert 1 <= holdIndex;
+                assert 0 <= holdIndex;
 
                 PieceNumber[] piecesAfterHold = new PieceNumber[11];
                 afterHoldWithNull.toArray(piecesAfterHold);

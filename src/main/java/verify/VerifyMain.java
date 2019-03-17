@@ -4,13 +4,16 @@ import bin.SolutionBinary;
 import bin.index.IndexParser;
 import bin.pieces.PieceNumber;
 import bin.pieces.PieceNumberConverter;
+import common.SyntaxException;
 import common.buildup.BuildUp;
 import common.datastore.MinoOperationWithKey;
 import common.datastore.Operation;
 import common.datastore.PieceCounter;
 import common.datastore.blocks.LongPieces;
+import common.datastore.blocks.Pieces;
 import common.order.ForwardOrderLookUp;
 import common.parser.StringEnumTransform;
+import common.pattern.LoadedPatternGenerator;
 import common.tetfu.common.ColorConverter;
 import concurrent.HarddropReachableThreadLocal;
 import core.action.reachable.HarddropReachable;
@@ -21,6 +24,7 @@ import core.mino.Piece;
 import core.neighbor.SimpleOriginalPiece;
 import core.srs.Rotate;
 import entry.path.output.OneFumenParser;
+import lib.Randoms;
 import main.BinaryLoader;
 import main.IndexPiecePair;
 import main.IndexPiecePairs;
@@ -44,6 +48,7 @@ public class VerifyMain {
             Arrays.asList(2, 7, 2),
             Arrays.asList(1, 7, 3)
     );
+
     private static final List<List<Integer>> maxIndexesUsingHold = Arrays.asList(
             Arrays.asList(1, 7, 3),
             Arrays.asList(1, 6, 4),
@@ -54,16 +59,94 @@ public class VerifyMain {
             Arrays.asList(1, 1, 7, 2)
     );
 
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) throws IOException, SyntaxException {
+        System.out.println("Loading...");
+
+        MinoFactory minoFactory = new MinoFactory();
+        int fieldHeight = 4;
+        Path indexPath = Paths.get("resources/index.csv");
+        Map<Integer, IndexPiecePair> indexes = IndexPiecePairs.create(indexPath, minoFactory, fieldHeight);
+
+        List<WithTetris> withTetrisList = Files.lines(Paths.get("resources/tetris_indexed_solutions_SRS7BAG.csv")).parallel()
+                .map(line -> (
+                        Arrays.stream(line.split(","))
+                                .map(Integer::parseInt)
+                                .map(indexes::get)
+                                .collect(Collectors.toList())
+                ))
+                .flatMap(pairs -> {
+                    List<IndexPiecePair> allIList = pairs.stream()
+                            .filter(it -> {
+                                SimpleOriginalPiece originalPiece = it.getSimpleOriginalPiece();
+                                return originalPiece.getPiece() == Piece.I && originalPiece.getRotate() == Rotate.Left;
+                            })
+                            .collect(Collectors.toList());
+                    assert 0 < allIList.size();
+
+                    return allIList.stream().map(iPiece -> {
+                        List<IndexPiecePair> operations = pairs.stream()
+                                .filter(it -> !iPiece.equals(it))
+                                .collect(Collectors.toList());
+
+                        return new WithTetris(operations, iPiece);
+                    });
+                })
+                .collect(Collectors.toList());
+
 //        run("1", "[]SZJLTOI SZJL");  // no solution
 //        run("1", "[]JSZTLOI JTIS");  // empty hold
 //        run("1", "[]JSZTLOI JTSI");  // exist soluiton
 
-        run("1", "[I]JSZTLOI JST");  // no solution
-        run("1", "[O]JSZTLOI JST");  // no solution
+        System.out.println();
+
+        VerifyMain main = new VerifyMain(minoFactory, fieldHeight, withTetrisList);
+
+        Randoms randoms = new Randoms();
+
+        for (boolean isFirstHoldEmpty : Arrays.asList(true, false)) {
+            for (int cycle = 1; cycle <= 7; cycle++) {
+                List<Integer> maxIndexes = (isFirstHoldEmpty ? maxIndexesHoldEmpty : maxIndexesUsingHold).get(cycle - 1);
+                String patterns = maxIndexes.stream().map(it -> "*p" + it).collect(Collectors.joining(","));
+                System.out.println(patterns);
+
+                LoadedPatternGenerator generator = new LoadedPatternGenerator(patterns);
+                List<Pieces> candidates = generator.blocksStream().filter(it -> randoms.nextBoolean(0.0005)).collect(Collectors.toList());
+                System.out.println(candidates.size());
+                Collections.shuffle(candidates);
+
+                for (Pieces pieces : candidates.subList(0, 100)) {
+                    String pieceString = pieces.blockStream().map(Piece::getName).collect(Collectors.joining());
+                    String sequence;
+                    if (isFirstHoldEmpty) {
+                        sequence = "[]" + pieceString;
+                    } else {
+                        sequence = "[" + pieceString.charAt(0) + "]" + pieceString.substring(1);
+                    }
+                    System.out.println(sequence);
+                    main.run(Integer.toString(cycle), sequence);
+                }
+            }
+        }
+
+//        main.run("1", "[I]JSZTLOI JST");  // no solution
+//        main.run("1", "[O]JSZTLOI JST");  // no solution
     }
 
-    private static void run(String cycleString, String sequence) throws IOException {
+    private final int fieldHeight;
+    private final List<WithTetris> withTetrisList;
+    private final HarddropReachableThreadLocal harddropReachableThreadLocal;
+    private final ForwardOrderLookUp lookUp;
+    private final OneFumenParser fumenParser;
+
+    private VerifyMain(MinoFactory minoFactory, int fieldHeight, List<WithTetris> withTetrisList) {
+        this.fieldHeight = fieldHeight;
+        this.withTetrisList = withTetrisList;
+        this.harddropReachableThreadLocal = new HarddropReachableThreadLocal(fieldHeight);
+        this.lookUp = new ForwardOrderLookUp(10, 11);
+        this.fumenParser = new OneFumenParser(minoFactory, new ColorConverter());
+    }
+
+    private void run(String cycleString, String sequence) throws IOException {
         sequence = sequence.replace(" ", "");
 
         int cycle;
@@ -113,7 +196,7 @@ public class VerifyMain {
         run(cycle, hold, pieces);
     }
 
-    private static void run(int cycle, Piece hold, List<Piece> initPieces) throws IOException {
+    private void run(int cycle, Piece hold, List<Piece> initPieces) throws IOException {
         assert initPieces.size() == 11;
 
         boolean isFirstHoldEmpty = hold == null;
@@ -142,41 +225,50 @@ public class VerifyMain {
         System.out.println("Solution: 0b" + toBinary(solution) + " [" + toString(converter, solution) + "]");
         System.out.println();
 
-        MinoFactory minoFactory = new MinoFactory();
-        int fieldHeight = 4;
-        Path indexPath = Paths.get("resources/index.csv");
-        Map<Integer, IndexPiecePair> indexes = IndexPiecePairs.create(indexPath, minoFactory, fieldHeight);
-
-        HarddropReachableThreadLocal harddropReachableThreadLocal = new HarddropReachableThreadLocal(fieldHeight);
-        Field initField = FieldFactory.createField(fieldHeight);
+        VerifyData data = verify(hold, initPieces);
 
         System.out.println("# from index csv");
 
-        List<WithTetris> withTetrisList = Files.lines(Paths.get("resources/tetris_indexed_solutions_SRS7BAG.csv")).parallel()
-                .map(line -> (
-                        Arrays.stream(line.split(","))
-                                .map(Integer::parseInt)
-                                .map(indexes::get)
-                                .collect(Collectors.toList())
-                ))
-                .flatMap(pairs -> {
-                    List<IndexPiecePair> allIList = pairs.stream()
-                            .filter(it -> {
-                                SimpleOriginalPiece originalPiece = it.getSimpleOriginalPiece();
-                                return originalPiece.getPiece() == Piece.I && originalPiece.getRotate() == Rotate.Left;
-                            })
-                            .collect(Collectors.toList());
-                    assert 0 < allIList.size();
+        System.out.println("hold empty: " + data.isHoldEmpty);
+        System.out.println("hold pieces: " + data.holdCandidates);
 
-                    return allIList.stream().map(iPiece -> {
-                        List<IndexPiecePair> operations = pairs.stream()
-                                .filter(it -> !iPiece.equals(it))
-                                .collect(Collectors.toList());
+        if (!data.sampleFumens.isEmpty()) {
+            System.out.println("Sample: ");
+        }
+        for (String fumen : data.sampleFumens) {
+            System.out.println(fumen);
+        }
 
-                        return new WithTetris(operations, iPiece);
-                    });
-                })
-                .collect(Collectors.toList());
+        // Verify
+        if (solution == (byte) -2) {
+            if (!data.isHoldEmpty && data.holdCandidates.isEmpty()) {
+                System.out.println("*** Verified ***");
+            } else {
+                throw new IllegalStateException("Not verified: byte is -2, but solution is found");
+            }
+        } else if (solution == (byte) -1) {
+            if (data.isHoldEmpty) {
+                System.out.println("*** Verified ***");
+            } else {
+                throw new IllegalStateException("Not verified: byte is -1, but solution without hold is not found");
+            }
+        } else {
+            byte expected = 0;
+            for (Piece piece : data.holdCandidates) {
+                expected |= converter.get(piece).getBitByte();
+            }
+            if (solution == expected) {
+                System.out.println("*** Verified ***");
+            } else {
+                throw new IllegalStateException("Not verified: byte or solution to verify is wrong");
+            }
+        }
+
+        System.out.println();
+    }
+
+    private VerifyData verify(Piece hold, List<Piece> initPieces) {
+        Field initField = FieldFactory.createField(fieldHeight);
 
         LongPieces noHold9Sequence = null;
         if (hold == null) {
@@ -186,6 +278,7 @@ public class VerifyMain {
             }
         }
 
+        boolean isHoldEmpty = false;
         if (noHold9Sequence != null) {
             List<Piece> noHold9Pieces = noHold9Sequence.getPieces();
 
@@ -193,16 +286,12 @@ public class VerifyMain {
             PieceCounter noHold9PieceCounter = new PieceCounter(noHold9Pieces.stream());
 
             // ホールドなしでパフェできる
-            boolean b = withTetrisList.parallelStream()
+            isHoldEmpty = withTetrisList.parallelStream()
                     .filter(it -> noHold9PieceCounter.equals(it.get9PieceCounter()))
                     .anyMatch(it -> {
                         HarddropReachable reachable = harddropReachableThreadLocal.get();
                         return BuildUp.existsValidByOrder(initField, it.get9Operations().stream(), noHold9Pieces, fieldHeight, reachable);
                     });
-
-            System.out.println("hold empty: " + b);
-        } else {
-            System.out.println("hold empty: false");
         }
 
         LongPieces noHold10Sequence;
@@ -213,8 +302,6 @@ public class VerifyMain {
             // 入力にホールドなし
             noHold10Sequence = new LongPieces(initPieces.subList(0, 10));
         }
-
-        ForwardOrderLookUp lookUp = new ForwardOrderLookUp(10, 11);
 
         // ホールドと同じ並びのものをひとつだけ取り除く
         // ホールドした結果、同じ並びになるものがあるかもしれないため、取り除くのはひとつだけにする
@@ -231,8 +318,6 @@ public class VerifyMain {
                 .collect(Collectors.toCollection(HashSet::new));
 
         Map<Piece, String> pieceFlag = new ConcurrentHashMap<>();
-
-        OneFumenParser fumenParser = new OneFumenParser(minoFactory, new ColorConverter());
 
         PieceCounter initPieceCounter = new PieceCounter(initPieces.stream());
         PieceCounter singlePieceCounter = PieceCounter.getSinglePieceCounter(Piece.I);
@@ -262,14 +347,16 @@ public class VerifyMain {
             });
         });
 
-        System.out.println("hold = " + pieceFlag.keySet());
-        System.out.println("Sample: ");
-        for (Map.Entry<Piece, String> entry : pieceFlag.entrySet()) {
-            System.out.println(entry.getKey() + ": " + entry.getValue());
-        }
+        List<String> samples = pieceFlag.entrySet().stream()
+                .map(entry -> (
+                        entry.getKey() + ": " + entry.getValue()
+                ))
+                .collect(Collectors.toList());
+
+        return new VerifyData(isHoldEmpty, pieceFlag.keySet(), samples);
     }
 
-    private static String toBinary(byte value) {
+    private String toBinary(byte value) {
         StringBuilder str = new StringBuilder();
         for (int index = 7; 0 <= index; index--) {
             str.append((value >> index) & 1L);
@@ -277,7 +364,7 @@ public class VerifyMain {
         return str.toString();
     }
 
-    private static String toString(PieceNumberConverter converter, byte value) {
+    private String toString(PieceNumberConverter converter, byte value) {
         if (value == (byte) -2) {
             return "no solution";
         }
@@ -297,7 +384,7 @@ public class VerifyMain {
         return str.toString();
     }
 
-    private static String getFileName(List<Integer> maxIndexes, boolean isFirstHoldEmpty) {
+    private String getFileName(List<Integer> maxIndexes, boolean isFirstHoldEmpty) {
         String inputName;
         if (isFirstHoldEmpty) {
             String prefix = maxIndexes.stream().map(Object::toString).collect(Collectors.joining());
@@ -342,5 +429,17 @@ class WithTetris {
 
     List<MinoOperationWithKey> get9Operations() {
         return operations9;
+    }
+}
+
+class VerifyData {
+    final boolean isHoldEmpty;
+    final Set<Piece> holdCandidates;
+    final List<String> sampleFumens;
+
+    public VerifyData(boolean isHoldEmpty, Set<Piece> holdCandidates, List<String> sampleFumens) {
+        this.isHoldEmpty = isHoldEmpty;
+        this.holdCandidates = holdCandidates;
+        this.sampleFumens = sampleFumens;
     }
 }
