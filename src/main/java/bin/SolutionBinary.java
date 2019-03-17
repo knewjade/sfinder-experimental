@@ -32,4 +32,8 @@ public class SolutionBinary {
     public byte at(int index) {
         return buffer[index];
     }
+
+    public int max() {
+        return max;
+    }
 }

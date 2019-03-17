@@ -8,17 +8,17 @@ import bin.pieces.PieceNumberConverter;
 import common.order.ReverseOrderLookUp;
 import core.mino.Piece;
 
-import java.io.*;
-import java.nio.file.Files;
-import java.nio.file.Paths;
+import java.io.BufferedOutputStream;
+import java.io.DataOutputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-// start when hold is empty
-public class SecondBinaryHoldEmptyMain {
+public class SecondBinaryMain {
     public static void main(String[] args) throws IOException {
         String postfix = args[0];
 
@@ -56,7 +56,7 @@ public class SecondBinaryHoldEmptyMain {
     private static void run(List<List<Integer>> maxIndexesList, String postfix, boolean isFirstHoldEmpty) throws IOException {
         // 9ミノのテトリスパフェ結果を読み込み
         SolutionBinary binary9Piece = load9PieceBinary("resources/9pieces_" + postfix + ".bin");
-        System.out.println(binary9Piece.get().length);  // 40353607 bytes
+        System.out.println(binary9Piece.max());  // 40353607 bytes
 
         PieceNumberConverter converter = PieceNumberConverter.createDefaultConverter();
 
@@ -125,23 +125,12 @@ public class SecondBinaryHoldEmptyMain {
     }
 
     private static SolutionBinary load9PieceBinary(String name) throws IOException {
-        int totalByte = getTotalByte(name);
-
-        byte[] bytes = new byte[totalByte];
-        try (DataInputStream dataInStream = new DataInputStream(new BufferedInputStream(new FileInputStream(name)))) {
-            dataInStream.readFully(bytes, 0, bytes.length);
-        }
-
-        return new SolutionBinary(bytes);
+        return BinaryLoader.load(name);
     }
 
     private static SecondRunner createRunner(SolutionBinary binary, PieceNumberConverter converter) {
         IndexParser indexParser = new IndexParser(Arrays.asList(1, 1, 1, 1, 1, 1, 1, 1, 1));
         return new SecondRunner(converter, indexParser, binary);
-    }
-
-    private static int getTotalByte(String name) throws IOException {
-        return (int) Files.size(Paths.get(name));
     }
 }
 
@@ -229,7 +218,6 @@ class HoldEmpty implements BinaryOutput {
         return outputBinary.get();
     }
 }
-
 
 class WithHold implements BinaryOutput {
     private final SolutionBinary outputBinary;

@@ -163,7 +163,6 @@ class Column implements HTMLColumn {
     }
 }
 
-
 class ResultWithTetris {
     private final IndexPiecePair last;
     private final List<MinoOperationWithKey> allOperations;
