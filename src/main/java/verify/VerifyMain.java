@@ -64,8 +64,8 @@ public class VerifyMain {
     );
 
     public static void main(String[] args) throws IOException, SyntaxException {
-        verifyAuto();
-//        verifyManual();
+//        verifyAuto();
+        verifyManual();
     }
 
     private static void verifyManual() throws IOException {
@@ -291,26 +291,25 @@ public class VerifyMain {
         }
 
         // Verify
-        if (solution == (byte) -2) {
+        if (solution == (byte) 0) {
             // no solution
             if (data.isHoldEmpty == null && data.holdCandidates.isEmpty()) {
                 System.out.println("*** Verified ***");
             } else {
-                throw new IllegalStateException("Not verified: byte is -2, but solution is found");
-            }
-        } else if (solution == (byte) -1) {
-            // empty
-            if (data.isHoldEmpty != null) {
-                System.out.println("*** Verified ***");
-            } else {
-                throw new IllegalStateException("Not verified: byte is -1, but solution without hold is not found");
+                throw new IllegalStateException("Not verified: byte is 0, but solution is found");
             }
         } else {
-            // any piece
+            // any piece or empty
             byte expected = 0;
+
+            if (data.isHoldEmpty != null) {
+                expected |= 0b10000000;
+            }
+
             for (Piece piece : data.holdCandidates) {
                 expected |= converter.get(piece).getBitByte();
             }
+
             if (solution == expected) {
                 System.out.println("*** Verified ***");
             } else {
@@ -422,17 +421,15 @@ public class VerifyMain {
     }
 
     private String toString(PieceNumberConverter converter, byte value) {
-        if (value == (byte) -2) {
+        if (value == (byte) 0) {
             return "no solution";
         }
 
-        if (value == (byte) -1) {
-            return "empty hold";
+        StringBuilder str = new StringBuilder();
+        if ((value & 0b10000000) != 0) {
+            str.append("E");
         }
 
-        assert 0 < value : value;
-
-        StringBuilder str = new StringBuilder();
         for (Piece piece : PieceNumberConverter.PPT_PIECES) {
             if ((value & converter.get(piece).getBitByte()) != 0) {
                 str.append(piece.getName());
