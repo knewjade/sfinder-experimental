@@ -177,7 +177,7 @@ class HoldEmpty implements BinaryOutput {
 
                 if (rangeChecker.check(beforeHold)) {
                     int index = indexParser.parse(beforeHold);
-                    outputBinary.put(index, (byte) 0xff);
+                    outputBinary.or(index, (byte) 0b10000000);
                 }
             }
         }
