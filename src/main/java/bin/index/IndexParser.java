@@ -46,6 +46,8 @@ public class IndexParser {
 
         this.scales = scales;
         this.max = scales[0] * 7;
+
+        assert scales[scales.length - 1] * 7 <= Integer.MAX_VALUE;
     }
 
     public int parse(PieceNumber[] pieces) {
