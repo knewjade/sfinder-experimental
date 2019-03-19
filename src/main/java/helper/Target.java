@@ -1,19 +1,19 @@
-package main;
+package helper;
 
 import core.neighbor.SimpleOriginalPiece;
 
 import java.util.List;
 
-class Target {
+public class Target {
     private final List<SimpleOriginalPiece> operations;
     private final SimpleOriginalPiece lastPiece;
 
-    Target(List<SimpleOriginalPiece> operations, SimpleOriginalPiece lastPiece) {
+    public Target(List<SimpleOriginalPiece> operations, SimpleOriginalPiece lastPiece) {
         this.operations = operations;
         this.lastPiece = lastPiece;
     }
 
-    List<SimpleOriginalPiece> getOperations() {
+    public List<SimpleOriginalPiece> getOperations() {
         return operations;
     }
 }

@@ -1,6 +1,6 @@
-package main;
+package mainv2;
 
-import bin.SolutionBinary;
+import bin.*;
 import bin.index.IndexParser;
 import bin.pieces.PieceNumber;
 import bin.pieces.PieceNumberConverter;
@@ -12,10 +12,15 @@ import core.action.reachable.HarddropReachable;
 import core.field.Field;
 import core.field.FieldFactory;
 import core.mino.MinoFactory;
+import core.mino.MinoShifter;
 import core.mino.Piece;
 import core.neighbor.SimpleOriginalPiece;
+import core.srs.MinoRotation;
 import core.srs.Rotate;
 import helper.Target;
+import main.CountPrinter;
+import main.IndexPiecePair;
+import main.IndexPiecePairs;
 
 import java.io.BufferedOutputStream;
 import java.io.DataOutputStream;
@@ -31,23 +36,29 @@ import java.util.stream.Collectors;
 
 public class FirstBinaryMain {
     public static void main(String[] args) throws IOException {
-//        run("SRS");
+        run("SRS");
 //        run("SRS7BAG");
-        run(args[0]);
+//        run(args[0]);
     }
 
     private static void run(String postfix) throws IOException {
         // 初期化
         int fieldHeight = 4;
         MinoFactory minoFactory = new MinoFactory();
+        MinoShifter minoShifter = new MinoShifter();
+        MinoRotation minoRotation = new MinoRotation();
+
         Field initField = FieldFactory.createField(fieldHeight);
         HarddropReachableThreadLocal harddropReachableThreadLocal = new HarddropReachableThreadLocal(fieldHeight);
         PieceNumberConverter converter = PieceNumberConverter.createDefaultConverter();
 
+        MovementComparator movementComparator = new MovementComparator();
+        Movement movement = new Movement(minoFactory, minoRotation, minoShifter);
+
         IndexParser indexParser = new IndexParser(Arrays.asList(1, 1, 1, 1, 1, 1, 1, 1, 1));
         int max = indexParser.getMax();
         assert max == 7 * 7 * 7 * 7 * 7 * 7 * 7 * 7 * 7;
-        SolutionBinary binary = new SolutionBinary(max);
+        SolutionShortBinary binary = new SolutionShortBinary(max);
 
         // Indexを読み込み
         Path indexPath = Paths.get("resources/index.csv");
@@ -94,20 +105,50 @@ public class FirstBinaryMain {
                     return new BuildUpStream(reachable, fieldHeight).existsValidBuildPattern(initField, operations);
                 })
                 .forEach(operations -> {
-                    PieceNumber[] pieces = operations.stream()
-                            .map(Operation::getPiece)
-                            .map(converter::get)
-                            .toArray(PieceNumber[]::new);
-                    int index = indexParser.parse(pieces);
-                    binary.put(index, (byte) 1);
+                    // 指定した範囲より値が大きいときは 0 となる
+                    short step = calcMinStep(movement, operations);
+
+                    // 解が存在するときは、結果を更新する
+                    if (Movements.isPossible(step)) {
+                        PieceNumber[] pieces = operations.stream()
+                                .map(Operation::getPiece)
+                                .map(converter::get)
+                                .toArray(PieceNumber[]::new);
+                        int index = indexParser.parse(pieces);
+                        binary.putIfSatisfy(index, step, movementComparator::shouldUpdate);
+                    }
                 });
 
         // 書き込み
-        byte[] bytes = binary.get();
+        short[] shorts = binary.get();
 
-        String name = "output/9pieces_" + postfix + ".bin";
+        String name = "output/9pieces_" + postfix + "_mov.vin";
         try (DataOutputStream dataOutStream = new DataOutputStream(new BufferedOutputStream(new FileOutputStream(name)))) {
-            dataOutStream.write(bytes, 0, bytes.length);
+            for (short value : shorts) {
+                dataOutStream.writeShort(value);
+            }
         }
+    }
+
+    // operationsの順番は固定
+    // 順番通りにおけることは確認済みの想定
+    // holdは0と仮定する (ある固定されたミノ順下で最も小さい値を見つけるため、ホールドの回数は定数として扱っても問題ない)
+    private static short calcMinStep(Movement movement, List<MinoOperationWithKey> operations) {
+        int moveCount = 0;
+        int rotateCount = 0;
+
+        for (MinoOperationWithKey operation : operations) {
+            assert operation.getNeedDeletedKey() == 0L;
+            Step step = movement.harddrop(operation.getPiece(), operation.getRotate(), operation.getX());
+            moveCount += step.movement();
+            rotateCount += step.rotateCount();
+        }
+
+        int holdCount = 0;
+        if (Movements.isRangeIn(moveCount, rotateCount, holdCount)) {
+            return Movements.possible(moveCount, rotateCount, holdCount);
+        }
+
+        throw new IllegalStateException();
     }
 }
