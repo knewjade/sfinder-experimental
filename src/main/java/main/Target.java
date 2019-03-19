@@ -1,10 +1,10 @@
-package helper;
+package main;
 
 import core.neighbor.SimpleOriginalPiece;
 
 import java.util.List;
 
-public class Target {
+class Target {
     private final List<SimpleOriginalPiece> operations;
     private final SimpleOriginalPiece lastPiece;
 

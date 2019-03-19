@@ -1,5 +1,6 @@
 package mainv2;
 
+import bin.MovementComparator;
 import bin.Movements;
 import bin.SolutionBinary;
 import bin.SolutionShortBinary;
@@ -27,5 +28,19 @@ public class VerifyFirstBinaryMain {
                 throw new IllegalStateException("Not verified value: index=" + index);
             }
         }
+
+        short min = Movements.impossible();
+        int minIndex = -1;
+        MovementComparator comparator = new MovementComparator();
+        for (int index = 0, max = byteBinary.max(); index < max; index++) {
+            short at = shortBinary.at(index);
+            if (comparator.shouldUpdate(min, at)) {
+                min = at;
+                minIndex = index;
+            }
+        }
+
+        System.out.println(min);
+        System.out.println(minIndex);
     }
 }

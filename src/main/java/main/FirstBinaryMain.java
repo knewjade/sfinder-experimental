@@ -15,7 +15,6 @@ import core.mino.MinoFactory;
 import core.mino.Piece;
 import core.neighbor.SimpleOriginalPiece;
 import core.srs.Rotate;
-import helper.Target;
 
 import java.io.BufferedOutputStream;
 import java.io.DataOutputStream;

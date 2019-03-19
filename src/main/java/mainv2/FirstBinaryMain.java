@@ -17,7 +17,6 @@ import core.mino.Piece;
 import core.neighbor.SimpleOriginalPiece;
 import core.srs.MinoRotation;
 import core.srs.Rotate;
-import helper.Target;
 import main.CountPrinter;
 import main.IndexPiecePair;
 import main.IndexPiecePairs;
@@ -36,8 +35,8 @@ import java.util.stream.Collectors;
 
 public class FirstBinaryMain {
     public static void main(String[] args) throws IOException {
-        run("SRS");
-//        run("SRS7BAG");
+//        run("SRS");
+        run("SRS7BAG");
 //        run(args[0]);
     }
 
@@ -80,6 +79,14 @@ public class FirstBinaryMain {
                 ))
                 .peek(ignored -> countPrinter.increaseAndShow())
                 .flatMap(pairs -> {
+                    // 指定した範囲より値が大きいときは 0 となる
+                    List<SimpleOriginalPiece> allOperations = pairs.stream()
+                            .map(IndexPiecePair::getSimpleOriginalPiece)
+                            .collect(Collectors.toList());
+                    short step = calcMinStep(movement, allOperations);
+
+                    assert Movements.isPossible(step);
+
                     // テトリスパフェに変換する
                     List<IndexPiecePair> allIList = pairs.stream()
                             .filter(it -> {
@@ -96,27 +103,22 @@ public class FirstBinaryMain {
                                 .map(IndexPiecePair::getSimpleOriginalPiece)
                                 .collect(Collectors.toList());
 
-                        return new Target(operations, iPiece.getSimpleOriginalPiece());
+                        return new Target(operations, iPiece.getSimpleOriginalPiece(), step);
                     });
                 })
-                .flatMap(target -> {
+                .forEach(target -> {
+                    short step = target.getMoveAndRotate();
                     HarddropReachable reachable = harddropReachableThreadLocal.get();
-                    List<? extends MinoOperationWithKey> operations = target.getOperations();
-                    return new BuildUpStream(reachable, fieldHeight).existsValidBuildPattern(initField, operations);
-                })
-                .forEach(operations -> {
-                    // 指定した範囲より値が大きいときは 0 となる
-                    short step = calcMinStep(movement, operations);
-
-                    // 解が存在するときは、結果を更新する
-                    if (Movements.isPossible(step)) {
-                        PieceNumber[] pieces = operations.stream()
-                                .map(Operation::getPiece)
-                                .map(converter::get)
-                                .toArray(PieceNumber[]::new);
-                        int index = indexParser.parse(pieces);
-                        binary.putIfSatisfy(index, step, movementComparator::shouldUpdate);
-                    }
+                    new BuildUpStream(reachable, fieldHeight).existsValidBuildPattern(initField, target.getOperations())
+                            .forEach(operations -> {
+                                // 解が存在するときは、結果を更新する
+                                PieceNumber[] pieces = operations.stream()
+                                        .map(Operation::getPiece)
+                                        .map(converter::get)
+                                        .toArray(PieceNumber[]::new);
+                                int index = indexParser.parse(pieces);
+                                binary.putIfSatisfy(index, step, movementComparator::shouldUpdate);
+                            });
                 });
 
         // 書き込み
@@ -130,10 +132,10 @@ public class FirstBinaryMain {
         }
     }
 
-    // operationsの順番は固定
-    // 順番通りにおけることは確認済みの想定
+    // operationsの順番にmovementは影響を受けない
     // holdは0と仮定する (ある固定されたミノ順下で最も小さい値を見つけるため、ホールドの回数は定数として扱っても問題ない)
-    private static short calcMinStep(Movement movement, List<MinoOperationWithKey> operations) {
+    private static short calcMinStep(Movement movement, List<SimpleOriginalPiece> operations) {
+        assert operations.size() == 10;
         int moveCount = 0;
         int rotateCount = 0;
 
