@@ -21,6 +21,10 @@ public class SolutionShortBinary {
         return buffer;
     }
 
+    public short at(int index) {
+        return buffer[index];
+    }
+
     public int max() {
         return max;
     }

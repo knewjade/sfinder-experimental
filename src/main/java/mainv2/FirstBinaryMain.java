@@ -122,7 +122,7 @@ public class FirstBinaryMain {
         // 書き込み
         short[] shorts = binary.get();
 
-        String name = "output/9pieces_" + postfix + "_mov.vin";
+        String name = "output/9pieces_" + postfix + "_mov.bin";
         try (DataOutputStream dataOutStream = new DataOutputStream(new BufferedOutputStream(new FileOutputStream(name)))) {
             for (short value : shorts) {
                 dataOutStream.writeShort(value);
