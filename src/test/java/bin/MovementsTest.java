@@ -24,6 +24,16 @@ class MovementsTest {
     }
 
     @Test
+    void testPossible2() {
+        assertThat(Movements.possible(12, 15, 4))
+                .isEqualTo(Movements.possible(Movements.possible(12, 15, 0), 4));
+        assertThat(Movements.possible(1, 2, 3))
+                .isEqualTo(Movements.possible(Movements.possible(1, 2, 0), 3));
+        assertThat(Movements.possible(0, 0, 0))
+                .isEqualTo(Movements.possible(Movements.possible(0, 0, 0), 0));
+    }
+
+    @Test
     void testIsRangeIn() {
         assertThat(Movements.isRangeIn(0, 0, 0)).isTrue();
         assertThat(Movements.isRangeIn(1, 0, 0)).isTrue();
