@@ -1,5 +1,7 @@
 package mainv2;
 
+import bin.Movements;
+import bin.SolutionBinary;
 import bin.SolutionShortBinary;
 import main.BinaryLoader;
 
@@ -45,15 +47,43 @@ public class VerifySecondBinaryMain {
         // 実行
         for (List<Integer> maxIndexes : maxIndexesList) {
             System.out.println(maxIndexes);
-            SolutionShortBinary binarySRS = load(maxIndexes, "SRS", isFirstHoldEmpty);
-            SolutionShortBinary binarySR7BAG = load(maxIndexes, "SRS7BAG", isFirstHoldEmpty);
+            SolutionShortBinary binarySRS = loadShortBinary(maxIndexes, "SRS", isFirstHoldEmpty);
+            SolutionShortBinary binarySR7BAG = loadShortBinary(maxIndexes, "SRS7BAG", isFirstHoldEmpty);
+            SolutionBinary prevBinary = loadByteBinary(maxIndexes, isFirstHoldEmpty);
 
             short[] first = binarySRS.get();
             short[] second = binarySR7BAG.get();
+            byte[] prev = prevBinary.get();
 
             // SRSとSRS7BAGの結果が一致していること
             if (!Arrays.equals(first, second)) {
-                System.out.println("NG");
+                throw new RuntimeException();
+            }
+
+            // 配列の要素数は、前回の結果の8倍であること
+            if (first.length != prev.length * 8) {
+                throw new RuntimeException();
+            }
+
+            // 前回の結果と一致していること
+            for (int index = 0, max = prev.length; index < max; index++) {
+                byte prevSolution = prev[index];
+
+                for (int offset = 0; offset < 8; offset++) {
+                    short currentSolution = first[index * 8 + offset];
+
+                    if ((Byte.toUnsignedInt(prevSolution) & (1 << (7 - offset))) != 0) {
+                        // パフェできる
+                        if (!Movements.isPossible(currentSolution)) {
+                            throw new RuntimeException();
+                        }
+                    } else {
+                        // パフェできない
+                        if (Movements.isPossible(currentSolution)) {
+                            throw new RuntimeException(prevSolution + " " + currentSolution);
+                        }
+                    }
+                }
             }
 
             // 解がある個数を表示
@@ -68,7 +98,21 @@ public class VerifySecondBinaryMain {
         }
     }
 
-    private static SolutionShortBinary load(List<Integer> maxIndexes, String postfix, boolean isFirstHoldEmpty) throws IOException {
+    private static SolutionBinary loadByteBinary(List<Integer> maxIndexes, boolean isFirstHoldEmpty) throws IOException {
+        // 出力方式とファイル名
+        String inputName;
+        if (isFirstHoldEmpty) {
+            String prefix = maxIndexes.stream().map(Object::toString).collect(Collectors.joining());
+            inputName = "resources/bin/" + prefix + ".bin";
+        } else {
+            String prefix = maxIndexes.stream().map(Object::toString).collect(Collectors.joining());
+            inputName = "resources/bin/h" + prefix + ".bin";
+        }
+
+        return BinaryLoader.load(inputName);
+    }
+
+    private static SolutionShortBinary loadShortBinary(List<Integer> maxIndexes, String postfix, boolean isFirstHoldEmpty) throws IOException {
         // 出力方式とファイル名
         String inputName;
         if (isFirstHoldEmpty) {

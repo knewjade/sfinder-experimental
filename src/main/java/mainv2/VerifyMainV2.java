@@ -63,8 +63,8 @@ public class VerifyMainV2 {
     );
 
     public static void main(String[] args) throws IOException, SyntaxException {
-        verifyAuto();
-//        verifyManual();
+//        verifyAuto();
+        verifyManual();
     }
 
     private static void verifyManual() throws IOException {
