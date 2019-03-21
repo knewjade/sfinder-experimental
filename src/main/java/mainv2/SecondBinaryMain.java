@@ -79,7 +79,7 @@ public class SecondBinaryMain {
                 output = new HoldEmpty(outputBinary, converter, maxIndexes, indexParser, comparator);
 
                 String prefix = maxIndexes.stream().map(Object::toString).collect(Collectors.joining());
-                outputName = "output/" + postfix + "/h" + prefix + "_mov.bin";
+                outputName = "output/" + postfix + "/" + prefix + "_mov.bin";
             } else {
                 output = new WithHold(outputBinary, converter, maxIndexes, indexParser, comparator);
 

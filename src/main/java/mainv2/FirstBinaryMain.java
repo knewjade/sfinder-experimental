@@ -1,11 +1,13 @@
 package mainv2;
 
-import bin.*;
+import bin.Movement;
+import bin.MovementComparator;
+import bin.Movements;
+import bin.SolutionShortBinary;
 import bin.index.IndexParser;
 import bin.pieces.PieceNumber;
 import bin.pieces.PieceNumberConverter;
 import common.buildup.BuildUpStream;
-import common.datastore.MinoOperationWithKey;
 import common.datastore.Operation;
 import concurrent.HarddropReachableThreadLocal;
 import core.action.reachable.HarddropReachable;
@@ -61,7 +63,6 @@ public class FirstBinaryMain {
         // 対象となる解の数を表示用に事前に取得
         String solutionFilePath = "resources/tetris_indexed_solutions_" + postfix + ".csv";
         CountPrinter countPrinter = new CountPrinter(1000, (int) Files.lines(Paths.get(solutionFilePath)).count());
-
 
         // 出力用の配列 & インデックスを計算
         IndexParser indexParser = new IndexParser(Arrays.asList(1, 1, 1, 1, 1, 1, 1, 1, 1));
@@ -139,22 +140,6 @@ public class FirstBinaryMain {
     // operationsの順番にmovementは影響を受けない
     // holdは0と仮定する (ある固定されたミノ順下で最も小さい値を見つけるため、ホールドの回数は定数として扱っても問題ない)
     private static short calcMinStep(Movement movement, List<SimpleOriginalPiece> operations) {
-        assert operations.size() == 10;
-        int moveCount = 0;
-        int rotateCount = 0;
-
-        for (MinoOperationWithKey operation : operations) {
-            assert operation.getNeedDeletedKey() == 0L;
-            Step step = movement.harddrop(operation.getPiece(), operation.getRotate(), operation.getX());
-            moveCount += step.movement();
-            rotateCount += step.rotateCount();
-        }
-
-        int holdCount = 0;
-        if (Movements.isRangeIn(moveCount, rotateCount, holdCount)) {
-            return Movements.possible(moveCount, rotateCount, holdCount);
-        }
-
-        throw new IllegalStateException();
+        return Movements.calcMinStep(movement, operations);
     }
 }
