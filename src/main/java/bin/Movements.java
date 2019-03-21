@@ -13,6 +13,13 @@ public class Movements {
                 hold);
     }
 
+    public static short possible(short moveAndRotate, int hold) {
+        assert isPossible(moveAndRotate);
+        assert (moveAndRotate & 0b1111) == 0;
+        assert isRangeIn(0, 0, hold);
+        return (short) (moveAndRotate | hold);
+    }
+
     public static boolean isRangeIn(int move, int rotate, int hold) {
         assert 0 <= move && 0 <= rotate && 0 <= hold;
         return move < 64 && rotate < 16 && hold < 16;

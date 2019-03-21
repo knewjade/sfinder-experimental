@@ -1,6 +1,6 @@
 import common.SyntaxException;
 import mainv2.FirstBinaryMain;
-import main.SecondBinaryMain;
+import mainv2.SecondBinaryMain;
 import verify.VerifyMain;
 
 import java.io.IOException;
@@ -12,10 +12,11 @@ public class ExpMain {
 //        SecondBinaryMain.main(args);
 //        VerifyMain.main(args);
 
-//        for (String prefix : Arrays.asList("SRS", "SRS7BAG")) {
-//            SecondBinaryMain.main(new String[]{prefix});
-//        }
+        for (String prefix : Arrays.asList("SRS7BAG", "SRS")) {
+            SecondBinaryMain.main(new String[]{prefix});
+        }
 
 //        FirstBinaryMain.main(args);
+//        SecondBinaryMain.main(args);
     }
 }

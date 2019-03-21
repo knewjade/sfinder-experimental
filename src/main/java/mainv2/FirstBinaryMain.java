@@ -36,8 +36,8 @@ import java.util.stream.Collectors;
 public class FirstBinaryMain {
     public static void main(String[] args) throws IOException {
 //        run("SRS");
-        run("SRS7BAG");
-//        run(args[0]);
+//        run("SRS7BAG");
+        run(args[0]);
     }
 
     private static void run(String postfix) throws IOException {
@@ -54,11 +54,6 @@ public class FirstBinaryMain {
         MovementComparator movementComparator = new MovementComparator();
         Movement movement = new Movement(minoFactory, minoRotation, minoShifter);
 
-        IndexParser indexParser = new IndexParser(Arrays.asList(1, 1, 1, 1, 1, 1, 1, 1, 1));
-        int max = indexParser.getMax();
-        assert max == 7 * 7 * 7 * 7 * 7 * 7 * 7 * 7 * 7;
-        SolutionShortBinary binary = new SolutionShortBinary(max);
-
         // Indexを読み込み
         Path indexPath = Paths.get("resources/index.csv");
         Map<Integer, IndexPiecePair> indexes = IndexPiecePairs.create(indexPath, minoFactory, fieldHeight);
@@ -66,6 +61,13 @@ public class FirstBinaryMain {
         // 対象となる解の数を表示用に事前に取得
         String solutionFilePath = "resources/tetris_indexed_solutions_" + postfix + ".csv";
         CountPrinter countPrinter = new CountPrinter(1000, (int) Files.lines(Paths.get(solutionFilePath)).count());
+
+
+        // 出力用の配列 & インデックスを計算
+        IndexParser indexParser = new IndexParser(Arrays.asList(1, 1, 1, 1, 1, 1, 1, 1, 1));
+        int max = indexParser.getMax();
+        assert max == 7 * 7 * 7 * 7 * 7 * 7 * 7 * 7 * 7;
+        SolutionShortBinary binary = new SolutionShortBinary(max);
 
         // 解から9ミノ（最後のIを除いた手順）で組めるミノ順をすべて列挙
         // すべての地形ごとに結果を保存する
@@ -79,6 +81,8 @@ public class FirstBinaryMain {
                 ))
                 .peek(ignored -> countPrinter.increaseAndShow())
                 .flatMap(pairs -> {
+                    // stepを計算
+                    // ミノの置く順番には影響を受けない
                     // 指定した範囲より値が大きいときは 0 となる
                     List<SimpleOriginalPiece> allOperations = pairs.stream()
                             .map(IndexPiecePair::getSimpleOriginalPiece)
