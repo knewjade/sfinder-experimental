@@ -34,14 +34,12 @@ fun main(args: Array<String>) {
             "__________" +
             "", fieldHeight)
     val s1 = Arrays.asList(
-            Piece.S, Piece.L, Piece.J, Piece.Z, Piece.S, Piece.T
+            Piece.S, Piece.I, Piece.S, Piece.Z, Piece.O, Piece.T
     )
     val s2 = Arrays.asList(
             Piece.I, Piece.L, Piece.J, Piece.S, Piece.Z
     )
-    val pieceCounter3 = PieceCounter(Arrays.asList(
-            Piece.S, Piece.Z, Piece.T
-    ))
+    val pieceCounter3 = PieceCounter(listOf(Piece.S, Piece.Z, Piece.T))
 
     val pieceCounterSx2 = PieceCounter(listOf(Piece.S, Piece.S))
 
