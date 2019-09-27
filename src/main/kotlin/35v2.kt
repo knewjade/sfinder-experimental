@@ -20,7 +20,7 @@ import java.util.*
 
 class CheckerThreadLocal(val minoFactory: MinoFactory, val validator: PerfectValidator) : ThreadLocal<CheckerNoHold<Action>>() {
     override fun get(): CheckerNoHold<Action> {
-        return CheckerNoHold<Action>(minoFactory, validator)
+        return CheckerNoHold(minoFactory, validator)
     }
 }
 
@@ -45,7 +45,7 @@ fun main(args: Array<String>) {
 
     val pieceCounterSx2 = PieceCounter(listOf(Piece.S, Piece.S))
 
-    val lockObj = listOf<Int>()
+    val lockObj = Object()
 
     val minoFactory = MinoFactory()
     val minoShifter = MinoShifter()
