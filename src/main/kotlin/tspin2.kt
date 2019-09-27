@@ -15,7 +15,7 @@ import java.util.stream.Stream
 fun main(args: Array<String>) {
     val minoFactory = MinoFactory()
     val minoShifter = MinoShifter()
-    val minoRotation = MinoRotation()
+    val minoRotation = MinoRotation.create()
     val colorConverter = ColorConverter()
 
     val maxHeight = 4
