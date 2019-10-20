@@ -3,12 +3,13 @@ package mainv2;
 import bin.Movement;
 import bin.MovementComparator;
 import bin.Movements;
-import bin.SolutionShortBinary;
+import bin.SolutionFirstBinary;
 import bin.index.IndexParser;
 import bin.pieces.PieceNumber;
 import bin.pieces.PieceNumberConverter;
 import common.buildup.BuildUpStream;
 import common.datastore.Operation;
+import common.datastore.Pair;
 import concurrent.HarddropReachableThreadLocal;
 import core.action.reachable.HarddropReachable;
 import core.field.Field;
@@ -30,6 +31,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -37,9 +39,9 @@ import java.util.stream.Collectors;
 
 public class FirstBinaryMain {
     public static void main(String[] args) throws IOException {
-//        run("SRS");
+        run("SRS");
 //        run("SRS7BAG");
-        run(args[0]);
+//        run(args[0]);
     }
 
     private static void run(String postfix) throws IOException {
@@ -47,7 +49,7 @@ public class FirstBinaryMain {
         int fieldHeight = 4;
         MinoFactory minoFactory = new MinoFactory();
         MinoShifter minoShifter = new MinoShifter();
-        MinoRotation minoRotation = new MinoRotation();
+        MinoRotation minoRotation = MinoRotation.create();
 
         Field initField = FieldFactory.createField(fieldHeight);
         HarddropReachableThreadLocal harddropReachableThreadLocal = new HarddropReachableThreadLocal(fieldHeight);
@@ -68,20 +70,28 @@ public class FirstBinaryMain {
         IndexParser indexParser = new IndexParser(Arrays.asList(1, 1, 1, 1, 1, 1, 1, 1, 1));
         int max = indexParser.getMax();
         assert max == 7 * 7 * 7 * 7 * 7 * 7 * 7 * 7 * 7;
-        SolutionShortBinary binary = new SolutionShortBinary(max);
+        SolutionFirstBinary binary = new SolutionFirstBinary(max);
+
+        // 解をすべてロード
+        List<Pair<Integer, String>> linesWithSolutionIndex = getLinesWithSolutionIndex(solutionFilePath);
 
         // 解から9ミノ（最後のIを除いた手順）で組めるミノ順をすべて列挙
         // すべての地形ごとに結果を保存する
-        Files.lines(Paths.get(solutionFilePath)).parallel()
-                .map(line -> (
-                        // ファイルから読みこむ
-                        Arrays.stream(line.split(","))
-                                .map(Integer::parseInt)
-                                .map(indexes::get)
-                                .collect(Collectors.toList())
-                ))
+        linesWithSolutionIndex.parallelStream()
+                .map(lineWithSolutionIndex -> {
+                    // ファイルから読みこむ
+                    String line = lineWithSolutionIndex.getValue();
+                    List<IndexPiecePair> pairs = Arrays.stream(line.split(","))
+                            .map(Integer::parseInt)
+                            .map(indexes::get)
+                            .collect(Collectors.toList());
+                    return new Pair<>(lineWithSolutionIndex.getKey(), pairs);
+                })
                 .peek(ignored -> countPrinter.increaseAndShow())
-                .flatMap(pairs -> {
+                .flatMap(pairsWithSolutionIndex -> {
+                    int solutionIndex = pairsWithSolutionIndex.getKey();
+                    List<IndexPiecePair> pairs = pairsWithSolutionIndex.getValue();
+
                     // stepを計算
                     // ミノの置く順番には影響を受けない
                     // 指定した範囲より値が大きいときは 0 となる
@@ -108,10 +118,11 @@ public class FirstBinaryMain {
                                 .map(IndexPiecePair::getSimpleOriginalPiece)
                                 .collect(Collectors.toList());
 
-                        return new Target(operations, iPiece.getSimpleOriginalPiece(), step);
+                        return new Target(solutionIndex, operations, iPiece.getSimpleOriginalPiece(), step);
                     });
                 })
                 .forEach(target -> {
+                    int solutionIndex = target.getSolutionIndex();
                     short step = target.getMoveAndRotate();
                     HarddropReachable reachable = harddropReachableThreadLocal.get();
                     new BuildUpStream(reachable, fieldHeight).existsValidBuildPattern(initField, target.getOperations())
@@ -122,19 +133,41 @@ public class FirstBinaryMain {
                                         .map(converter::get)
                                         .toArray(PieceNumber[]::new);
                                 int index = indexParser.parse(pieces);
-                                binary.putIfSatisfy(index, step, movementComparator::shouldUpdate);
+                                binary.putIfSatisfy(index, step, solutionIndex, movementComparator::shouldUpdate);
                             });
                 });
 
         // 書き込み
-        short[] shorts = binary.get();
+        {
+            short[] steps = binary.getSteps();
 
-        String name = "output/9pieces_" + postfix + "_mov.bin";
-        try (DataOutputStream dataOutStream = new DataOutputStream(new BufferedOutputStream(new FileOutputStream(name)))) {
-            for (short value : shorts) {
-                dataOutStream.writeShort(value);
+            String name = "output/9pieces_" + postfix + "_mov.bin";
+            try (DataOutputStream dataOutStream = new DataOutputStream(new BufferedOutputStream(new FileOutputStream(name)))) {
+                for (short value : steps) {
+                    dataOutStream.writeShort(value);
+                }
             }
         }
+
+        {
+            int[] solutions = binary.getSolutions();
+
+            String name = "output/9pieces_" + postfix + "_index.bin";
+            try (DataOutputStream dataOutStream = new DataOutputStream(new BufferedOutputStream(new FileOutputStream(name)))) {
+                for (int value : solutions) {
+                    dataOutStream.writeInt(value);
+                }
+            }
+        }
+    }
+
+    static List<Pair<Integer, String>> getLinesWithSolutionIndex(String solutionFilePath) throws IOException {
+        List<Pair<Integer, String>> linesWithSolutionIndex = new ArrayList<>();
+        List<String> lines = Files.lines(Paths.get(solutionFilePath)).collect(Collectors.toList());
+        for (int index = 0; index < lines.size(); index++) {
+            linesWithSolutionIndex.add(new Pair<>(index, lines.get(index)));
+        }
+        return linesWithSolutionIndex;
     }
 
     // operationsの順番にmovementは影響を受けない

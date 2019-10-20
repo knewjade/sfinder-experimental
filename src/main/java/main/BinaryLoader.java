@@ -1,6 +1,7 @@
 package main;
 
 import bin.SolutionBinary;
+import bin.SolutionIntBinary;
 import bin.SolutionShortBinary;
 
 import java.io.BufferedInputStream;
@@ -37,5 +38,18 @@ public class BinaryLoader {
         }
 
         return new SolutionShortBinary(shorts);
+    }
+
+    public static SolutionIntBinary loadIntBinary(String name) throws IOException {
+        int totalByte = getTotalByte(name);
+
+        int[] ints = new int[totalByte / 4];
+        try (DataInputStream dataInStream = new DataInputStream(new BufferedInputStream(new FileInputStream(name)))) {
+            for (int index = 0, length = ints.length; index < length; index++) {
+                ints[index] = dataInStream.readInt();
+            }
+        }
+
+        return new SolutionIntBinary(ints);
     }
 }
