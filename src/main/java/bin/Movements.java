@@ -9,6 +9,11 @@ public class Movements {
         return 0;
     }
 
+    public static byte possibleForByte(int move, int rotate, boolean hold) {
+        assert isByteRangeIn(move, rotate);
+        return (byte) (move << 4 | rotate << 1 | (hold ? 1 : 0));
+    }
+
     public static short possible(int move, int rotate, int hold) {
         assert isRangeIn(move, rotate, hold);
         return (short) (0b10000000_00000000 |
@@ -27,6 +32,10 @@ public class Movements {
     public static boolean isRangeIn(int move, int rotate, int hold) {
         assert 0 <= move && 0 <= rotate && 0 <= hold;
         return move < 64 && rotate < 16 && hold < 16;
+    }
+
+    public static boolean isByteRangeIn(int move, int rotate) {
+        return move < 16 && rotate < 8;
     }
 
     public static boolean isPossible(short value) {

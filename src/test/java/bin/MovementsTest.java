@@ -34,6 +34,13 @@ class MovementsTest {
     }
 
     @Test
+    void testPossibleForByte() {
+        assertThat(Movements.possibleForByte(0, 0, false)).isEqualTo((byte) 0b0000_000_0);
+        assertThat(Movements.possibleForByte(3, 4, false)).isEqualTo((byte) 0b0011_100_0);
+        assertThat(Movements.possibleForByte(8, 1, true)).isEqualTo((byte) 0b1000_001_1);
+    }
+
+    @Test
     void testIsRangeIn() {
         assertThat(Movements.isRangeIn(0, 0, 0)).isTrue();
         assertThat(Movements.isRangeIn(1, 0, 0)).isTrue();

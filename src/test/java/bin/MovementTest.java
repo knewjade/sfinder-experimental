@@ -12,7 +12,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class MovementTest {
     private Movement createMovement() {
         MinoFactory minoFactory = new MinoFactory();
-        MinoRotation minoRotation = new MinoRotation();
+        MinoRotation minoRotation = MinoRotation.create();
         MinoShifter minoShifter = new MinoShifter();
         return new Movement(minoFactory, minoRotation, minoShifter);
     }
