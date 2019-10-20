@@ -147,7 +147,7 @@ public class VerifyMainV2 {
         Path indexPath = Paths.get(CSV_DIRECTORY + "index.csv");
         Map<Integer, IndexPiecePair> indexes = IndexPiecePairs.create(indexPath, minoFactory, fieldHeight);
 
-        MinoRotation minoRotation = new MinoRotation();
+        MinoRotation minoRotation = MinoRotation.create();
         MinoShifter minoShifter = new MinoShifter();
         Movement movement = new Movement(minoFactory, minoRotation, minoShifter);
 
