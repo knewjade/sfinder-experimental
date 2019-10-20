@@ -59,7 +59,7 @@ public class SecondBinaryMain {
             // すでにホールドがあるとき
             List<List<Integer>> maxIndexesList = Arrays.asList(
                     Arrays.asList(1, 7, 3),
-                    Arrays.asList(1, 6, 4),
+//                    Arrays.asList(1, 6, 4),
                     Arrays.asList(1, 5, 5),
                     Arrays.asList(1, 4, 6),
                     Arrays.asList(1, 3, 7),
@@ -174,9 +174,14 @@ public class SecondBinaryMain {
 
         // 書き込み
         {
-            byte[] solutions = binary.getSolutions();
+            byte[] solutions1 = binary.getSolutions1();
+            byte[] solutions2 = binary.getSolutions2();
             try (DataOutputStream dataOutStream = new DataOutputStream(new BufferedOutputStream(new FileOutputStream(moveOutputName)))) {
-                for (byte value : solutions) {
+                for (byte value : solutions1) {
+                    dataOutStream.writeByte(value);
+                }
+
+                for (byte value : solutions2) {
                     dataOutStream.writeByte(value);
                 }
             }

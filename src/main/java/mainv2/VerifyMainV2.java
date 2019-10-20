@@ -1,6 +1,9 @@
 package mainv2;
 
-import bin.*;
+import bin.Movement;
+import bin.MovementComparator;
+import bin.Movements;
+import bin.RangeChecker;
 import bin.index.IndexParser;
 import bin.pieces.PieceNumber;
 import bin.pieces.PieceNumberConverter;
@@ -26,10 +29,12 @@ import core.srs.MinoRotation;
 import core.srs.Rotate;
 import entry.path.output.OneFumenParser;
 import lib.Randoms;
-import main.BinaryLoader;
 import main.IndexPiecePair;
 import main.IndexPiecePairs;
 
+import java.io.BufferedInputStream;
+import java.io.DataInputStream;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -270,7 +275,7 @@ public class VerifyMainV2 {
 
         // バイナリをロード
         String inputName = getFileName(maxIndexes, isFirstHoldEmpty);
-        SolutionShortBinary binary = BinaryLoader.loadShortBinary(inputName);
+        System.out.println(inputName);
 
         System.out.println("PC number: " + cycle);
         System.out.println("Sequence: " + initAllPieces);
@@ -282,13 +287,44 @@ public class VerifyMainV2 {
         System.out.println("Index: " + index);
 
         System.out.println("Solutions:");
-        for (int pieceNumber = 0; pieceNumber < 8; pieceNumber++) {
-            System.out.print("  ");
-            System.out.print(pieceNumber != 0 ? converter.get(pieceNumber - 1).getPiece().getName() : "Empty");
-            System.out.print(" -> ");
+        {
+            try (DataInputStream dataInStream = new DataInputStream(new BufferedInputStream(new FileInputStream(inputName)))) {
+                dataInStream.skipBytes(index * 11 * 8);
+                for (int pieceNumber = 0; pieceNumber < 8; pieceNumber++) {
+                    System.out.print("  ");
+                    System.out.print(pieceNumber != 0 ? converter.get(pieceNumber - 1).getPiece().getName() : "Empty");
+                    System.out.print(" -> ");
 
-            short solution = binary.at(index * 8 + pieceNumber);
-            System.out.println("0b" + toBinary(solution) + " [" + toString(solution) + "]");
+                    // exists
+                    {
+                        byte value = dataInStream.readByte();
+                        System.out.printf("0b%s ",toBinary(value));
+                    }
+
+                    int moveCount = 0;
+                    int rotateCount = 0;
+                    int holdCount = 0;
+                    byte[] bytes = new byte[10];
+                    for (int i = 0, length = 10; i < length; i++) {
+                        byte value = dataInStream.readByte();
+                        bytes[i] = value;
+                        moveCount += (value >> 4) & 0b1111;
+                        rotateCount += (value >> 1) & 0b111;
+                        holdCount += (value) & 0b1;
+                    }
+
+                    System.out.printf("move=%d, rotate=%d, hold=%d", moveCount, rotateCount, holdCount);
+
+                    if (0 < moveCount + rotateCount + holdCount) {
+                        System.out.print(" / ");
+                        for (byte b : bytes) {
+                            System.out.print(toBinary(b) + " ");
+                        }
+                    }
+
+                    System.out.println();
+                }
+            }
         }
 
         // csvから探索
@@ -357,22 +393,22 @@ public class VerifyMainV2 {
             }
         }
 
-        // Verify
-        for (int pieceNumber = 0; pieceNumber < 8; pieceNumber++) {
-            short binSolution = binary.at(index * 8 + pieceNumber);
-
-            short csvSolution;
-            if (results.containsKey(pieceNumber)) {
-                FinalResult result = results.get(pieceNumber);
-                csvSolution = result.getStep();
-            } else {
-                csvSolution = Movements.impossible();
-            }
-
-            if (binSolution != csvSolution) {
-                throw new IllegalStateException("Not verified: solutions are not same");
-            }
-        }
+//        // Verify
+//        for (int pieceNumber = 0; pieceNumber < 8; pieceNumber++) {
+//            short binSolution = binary.at(index * 8 + pieceNumber);
+//
+//            short csvSolution;
+//            if (results.containsKey(pieceNumber)) {
+//                FinalResult result = results.get(pieceNumber);
+//                csvSolution = result.getStep();
+//            } else {
+//                csvSolution = Movements.impossible();
+//            }
+//
+//            if (binSolution != csvSolution) {
+//                throw new IllegalStateException("Not verified: solutions are not same");
+//            }
+//        }
 
         System.out.println();
     }
@@ -408,7 +444,15 @@ public class VerifyMainV2 {
     private String toBinary(short value) {
         StringBuilder str = new StringBuilder();
         for (int index = 15; 0 <= index; index--) {
-            str.append((value >> index) & 1L);
+            str.append((value >> index) & 1);
+        }
+        return str.toString();
+    }
+
+    private String toBinary(byte value) {
+        StringBuilder str = new StringBuilder();
+        for (int index = 7; 0 <= index; index--) {
+            str.append((value >> index) & 1);
         }
         return str.toString();
     }
