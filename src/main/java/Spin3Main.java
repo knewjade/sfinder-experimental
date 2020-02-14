@@ -31,7 +31,7 @@ public class Spin3Main {
         int maxHeight = 7;
         MinoFactory minoFactory = new MinoFactory();
         MinoShifter minoShifter = new MinoShifter();
-        MinoRotation minoRotation = new MinoRotation();
+        MinoRotation minoRotation = MinoRotation.create();
         ColorConverter colorConverter = new ColorConverter();
         RotateCandidate candidate = new RotateCandidate(minoFactory, minoShifter, minoRotation, maxHeight);
         LockedReachableThreadLocal reachableThreadLocal = new LockedReachableThreadLocal(minoFactory, minoShifter, minoRotation, maxHeight);
