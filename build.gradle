@@ -3,6 +3,10 @@ version '1.0'
 
 apply plugin: "java"
 
+// Specify encoding of sources
+def defaultEncoding = 'UTF-8'
+[compileJava, compileTestJava]*.options*.encoding = defaultEncoding
+
 repositories {
     mavenCentral()
 }
