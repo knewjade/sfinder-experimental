@@ -336,7 +336,7 @@ class GA(private val sequenceToLine2: List<Line2>, private val solutions: List<S
         return if (0 < uncovered) {
             1.0 - (uncovered.toDouble() / size.sequences)
         } else {
-            size.fumen.toDouble() - bitSet.cardinality()
+            size.fumen - bitSet.cardinality() + 1.0
         }
     }
 }
