@@ -28,3 +28,4 @@ binary/*
 !binary/.gitkeep
 
 *.gif
+resources/

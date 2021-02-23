@@ -2,6 +2,8 @@ apply plugin: 'application'
 apply plugin: 'kotlin'
 
 [compileJava, compileTestJava]*.options*.encoding = 'UTF-8'
+sourceCompatibility = JavaVersion.VERSION_1_8
+targetCompatibility = JavaVersion.VERSION_1_8
 
 buildscript {
     ext.kotlin_version = '1.4.30'
@@ -15,6 +17,12 @@ buildscript {
     }
 }
 
+tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).all {
+    kotlinOptions {
+        jvmTarget = JavaVersion.VERSION_1_8
+    }
+}
+
 repositories {
     mavenCentral()
 }
@@ -24,9 +32,6 @@ dependencies {
     implementation platform('org.jetbrains.kotlin:kotlin-bom')
 
     implementation 'org.jetbrains.kotlin:kotlin-stdlib'
-    implementation 'org.testng:testng:7.1.0'
-    testImplementation 'org.jetbrains.kotlin:kotlin-test'
-    testImplementation 'org.jetbrains.kotlin:kotlin-test-junit'
 
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.+'
     testImplementation 'org.junit.jupiter:junit-jupiter-engine:5.+'
