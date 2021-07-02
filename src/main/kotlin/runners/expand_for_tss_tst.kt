@@ -23,22 +23,9 @@ class ExpandForTssTst {
         val height = 12
         val initField = FieldFactory.createField(height)
 
-        val head = mutableListOf<Operations>()
-        val second = mutableListOf<MutableList<Operations>>()
-        loadLines("resources/search_all_tst.txt").forEach { line ->
-            val isFirst = line.startsWith("#")
-            val str = if (isFirst) line.substring(1) else line
-            val operations = OperationInterpreter.parseToOperations(str)
-
-            if (isFirst) {
-                head.add(operations)
-                second.add(mutableListOf())
-            } else {
-                second.last().add(operations)
-            }
-        }
-
-        if (head.size != second.size) error("Illegal state in the list")
+        val headSecond = loadTssTst("resources/search_all_tst.txt")
+        val head = headSecond.first
+        val second = headSecond.second
 
         val minoFactory = MinoFactory()
         val expanderThreadLocal = LockedReachableExpanderThreadLocal.create(height)
@@ -77,6 +64,31 @@ class ExpandForTssTst {
         }
 
         MyFile("tst_after_tss_expanded.txt").newAsyncWriter().use { it.writeAndNewLine(lines) }
+    }
+
+    private fun loadTssTst(fileName: String): Pair<List<Operations>, List<List<Operations>>> {
+        val head = mutableListOf<Operations>()
+        val second = mutableListOf<MutableList<Operations>>()
+        loadLines(fileName).forEach { line ->
+            val isFirst = line.startsWith("#")
+            val str = if (isFirst) line.substring(1) else line
+            val operations = OperationInterpreter.parseToOperations(str)
+
+            if (isFirst) {
+                head.add(operations)
+                second.add(mutableListOf())
+            } else {
+                second.last().add(operations)
+            }
+        }
+
+        if (head.size != second.size) error("Illegal state in the list")
+        println(head.size)
+        if (!(second.all { it.isNotEmpty() })) {
+            error("Contains tss that does not has tst")
+        }
+
+        return head to second
     }
 
     private fun loadLines(fileName: String): List<String> {

@@ -24,4 +24,12 @@ data class MinoOperationWithKeysList(
     fun toMutableList(): MutableList<MinoOperationWithKey> {
         return operationWithKeys.toMutableList()
     }
+
+    fun blockField(height: Int): BlockField {
+        val blockField = BlockField(24)
+        operationWithKeys.forEach {
+            blockField.merge(it.createMinoField(height), it.piece)
+        }
+        return blockField
+    }
 }

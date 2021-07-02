@@ -1,3 +1,6 @@
+import common.pattern.LoadedPatternGenerator
+import java.util.stream.Collectors
+
 // 解数: 503634
 fun main() {
 //    val field = FieldFactory.createField(24)
@@ -9,5 +12,11 @@ fun main() {
 //    val results = sfSpin.run(FieldFactory.createField(height))
 //    println(results.size)
 
-    ExpandOpeningsTo7Mino().run(true)
+//    ExpandOpeningsTo7Mino().run(true)
+    val s = LoadedPatternGenerator("*!").blocksStream()
+        .collect(Collectors.toList())
+        .map { it.pieces.joinToString("") { piece -> piece.name } }
+        .sorted()
+        .joinToString(System.lineSeparator())
+    println(s)
 }

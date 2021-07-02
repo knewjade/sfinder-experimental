@@ -1,3 +1,4 @@
+import common.buildup.BuildUp
 import common.buildup.BuildUpStream
 import common.datastore.BlockField
 import common.datastore.PieceCounter
@@ -8,10 +9,13 @@ import common.parser.OperationTransform
 import components.LockedReachableExpanderThreadLocal
 import components.MinoOperationWithKeysList
 import concurrent.LockedReachableThreadLocal
+import core.action.reachable.LockedReachable
 import core.field.Field
 import core.field.FieldFactory
 import core.mino.MinoFactory
+import core.mino.MinoShifter
 import core.mino.Piece
+import core.srs.MinoRotation
 import entry.path.output.MyFile
 import functions.getTSpin
 import searcher.spins.spin.TSpins
@@ -53,12 +57,21 @@ class ExpandOpeningsTo7Mino {
             }
         println(expanded.size)  // 349582
 
+        // INFO: expandedには同じ手順が重複している可能性あり
+
         val results = if (holdT) {
             // Tミノを除いた地形で、2巡目のすべてのツモのTSTをカバーできている
             findThatAllSequencesAreCoveredByTSTInGroup(expanded, height)
         } else {
+            // Tミノを後回しにできない地形（Tでライン消去しないと置けない手順や、Tの上に置く必要があるなど）を含んでいる可能性があるので取り除く
+            val minoFactory = MinoFactory()
+            val minoShifter = MinoShifter()
+            val minoRotation = MinoRotation.create()
+            val lockedReachable = LockedReachable(minoFactory, minoShifter, minoRotation, height)
+            val checked = expanded.filter { canBuildAndGetTSpin(it, lockedReachable, initField, height) }
+
             // 1地形で、2巡目のすべてのツモのTSTをカバーできている
-            findThatAllSequencesAreCoveredByTST(expanded, height)
+            findThatAllSequencesAreCoveredByTST(checked, height)
         }
 
         val lines = results
@@ -83,6 +96,25 @@ class ExpandOpeningsTo7Mino {
         return Files.newBufferedReader(Paths.get(fileName), StandardCharsets.UTF_8).use { reader ->
             reader.lines().filter { it.isNotBlank() }.collect(Collectors.toList())
         }
+    }
+
+    fun canBuildAndGetTSpin(
+        minoOperationWithKeysList: MinoOperationWithKeysList, lockedReachable: LockedReachable,
+        initField: Field, height: Int
+    ): Boolean {
+        val withoutT = minoOperationWithKeysList.operationWithKeys.filter { it.piece != Piece.T }
+        if (!BuildUp.existsValidBuildPatternWithoutKey(initField, withoutT, height, lockedReachable)) {
+            return false
+        }
+
+        val field = MinoOperationWithKeysList(withoutT).field(initField, height)
+        val t = minoOperationWithKeysList.operationWithKeys.find { it.piece == Piece.T } ?: error("Not found T")
+
+        if (t.needDeletedKey != 0L) {
+            error("Unexpected T")
+        }
+
+        return lockedReachable.checks(field, t.mino, t.x, t.y, height)
     }
 
     // 1地形で、2巡目のすべてのツモのTSTをカバーできている
@@ -149,7 +181,7 @@ class ExpandOpeningsTo7Mino {
     }
 
     // Tミノを除いた地形で、2巡目のすべてのツモのTSTをカバーできている
-    private fun findThatAllSequencesAreCoveredByTSTInGroup(
+    fun findThatAllSequencesAreCoveredByTSTInGroup(
         expanded: List<MinoOperationWithKeysList>, height: Int
     ): List<MinoOperationWithKeysList> {
         val grouping = expanded
